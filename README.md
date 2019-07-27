@@ -1,4 +1,4 @@
-# protojure
+# protojure [![CircleCI](https://circleci.com/gh/protojure/lib.svg?style=svg)](https://circleci.com/gh/protojure/lib)
 
 Native Clojure support for [Google Protocol Buffer](https://developers.google.com/protocol-buffers/) and [GRPC](https://grpc.io/).
 
