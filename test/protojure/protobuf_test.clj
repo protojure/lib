@@ -74,8 +74,7 @@
 (defn- byte-string [x] (byte-array (mapv byte x)))
 
 (defn- test-repeated [data]
-  (-> (mapv byte data)
-      (byte-array)
+  (-> (byte-array data)
       (example/pb->SimpleRepeated)
       (:data)))
 
@@ -225,6 +224,12 @@
     (let [result (test-repeated [0xA 3 21 22 23 0xA 3 24 25 26])] ;; send the data in two chunks
       (is (= (count result) 6))
       (is (data-equal? result [21 22 23 24 25 26])))))
+
+(deftest packed-repeated-varint-test
+  (testing "Testing repeated field decoding of variable length values"
+    (let [result (test-repeated [0xA 0x05 0x27 0x00 0xf4 0x06 0x01])]
+      (is (= (count result) 4))
+      (is (data-equal? result [39 0 884 1])))))
 
 (deftest unpacked-repeated-test
   (testing "Testing repeated field decoding of unpacked structures"
