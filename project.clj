@@ -7,7 +7,6 @@
             :key "apache-2.0"}
   :plugins [[lein-codox "0.10.4"]
             [lein-cljfmt "0.5.7"]
-            [jonase/eastwood "0.2.6"]
             [lein-kibit "0.1.6"]
             [lein-bikeshed "0.5.1"]
             [lein-cloverage "1.0.13"]]
@@ -28,11 +27,6 @@
         protojure.internal.pedestal.io]
   :codox {:metadata {:doc/format :markdown}
           :namespaces [#"^(?!protojure.internal)"]}
-  :eastwood {:debug [:none]
-             :exclude-linters [:constant-test]
-             :add-linters [:unused-namespaces]
-             :config-files [".eastwood-overrides"]
-             :exclude-namespaces [example.hello protojure.grpc-test]}
   :profiles {:dev {:dependencies [[org.clojure/tools.namespace "0.2.11"]
                                   [clj-http "3.9.1"]
                                   [com.taoensso/timbre "4.10.0"]
