@@ -25,7 +25,7 @@ jobs:
       - run: make all
       - run: |
           mkdir tmp
-          mv target/protojure-1.0.1-SNAPSHOT.jar tmp
+          mv target/protojure-* tmp
       - store_artifacts:
           path: tmp/
           destination: jar
