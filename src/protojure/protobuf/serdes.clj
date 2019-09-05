@@ -190,12 +190,17 @@
   (fn [coll]
     (conj (or coll []) (f is))))
 
+(defn- repeated-seq
+  "Returns a lazy sequence of repeated items on an input-stream"
+  [f is]
+  (lazy-seq (when (not (.isAtEnd is))
+              (cons (f is) (repeated-seq f is)))))
+
 (defn cis->packedrepeated
   "Deserialize a 'packed' repeated type (see [[cis->packablerepeated]])"
   [f is]
   (fn [coll]
-    (let [len (.readRawVarint32 ^CodedInputStream is)]
-      (reduce conj (or coll []) (repeatedly len #(f is))))))
+    (cis->embedded #(reduce conj (or coll []) (repeated-seq f %)) is)))
 
 (defn cis->packablerepeated
   "
