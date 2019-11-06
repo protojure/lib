@@ -62,74 +62,65 @@
                 (.readTag is)))
        acc))))
 
-(defn- defparsefn [type]
+(defmacro defparsefn [type]
   (let [name (symbol (str "cis->" type))
-        sym (str "read" type)
-        f (eval `(fn [is#]
-                   (. is# ~(symbol sym))))
-        m {:doc (format "Deserialize a '%s' type" type)
-           :arglists '([is])}]
-    (intern *ns* (with-meta name m) f)))
+        sym (symbol (str "read" type))
+        doc (format "Deserialize a '%s' type" type)]
+    `(defn ~name ~doc [is#]
+       (. is# ~sym))))
 
-(defn- defwritefn [type default?]
+(defmacro defwritefn [type default?]
   (let [name (symbol (str "write-" type))
-        sym (str "write" type)
-        f (eval `(fn [os# tag# value#]
-                   (. os# ~(symbol sym) tag# value#)))
-        m {:doc (format "Serialize a '%s' type" type)
-           :arglists '([tag value os] [tag {:keys [optimize] :or {optimize true} :as options} value os])}]
-    (intern *ns* (with-meta name m)
-            (fn self
-              ([tag value os]
-               (self tag {} value os))
-              ([tag {:keys [optimize] :or {optimize true} :as options} value os]
-               (when-not (and optimize (default? value))
-                 (f os tag value)))))))
+        sym (symbol (str "write" type))
+        doc (format "Serialize a '%s' type" type)]
+    `(defn ~name ~doc
+       ([tag# value# os#]
+        (~name tag# {} value# os#))
+       ([tag# options# value# os#]
+        (when-not (and (get options# :optimize true) (~default? value#))
+          (. os# ~sym tag# value#))))))
 
-(defn- defsizefn [type default?]
+(defmacro defsizefn [type default?]
   (let [name (symbol (str "size-" type))
-        sym (str "compute" type "Size")
-        f (eval `(fn [tag# value#]
-                   (. CodedOutputStream ~(symbol sym) tag# value#)))
-        m {:doc (format "Compute length of serialized '%s' type" type)
-           :arglists '([tag value] [tag {:keys [optimize] :or {optimize true} :as options} value])}]
-    (intern *ns* (with-meta name m)
-            (fn self
-              ([tag value]
-               (self tag {} value))
-              ([tag {:keys [optimize] :or {optimize true} :as options} value]
-               (if-not (and optimize (default? value))
-                 (f tag value)
-                 0))))))
+        sym (symbol (str "compute" type "Size"))
+        doc (format "Compute length of serialized '%s' type" type)]
+    `(defn ~name ~doc
+       ([tag# value#]
+        (~name tag# {} value#))
+       ([tag# options# value#]
+        (if-not (and (get options# :optimize true) (~default? value#))
+          (. CodedOutputStream ~sym tag# value#)
+          0)))))
 
-(defn- defallfn [type default?]
-  (defparsefn type)
-  (defwritefn type default?)
-  (defsizefn type default?))
+(defmacro defserdes [type default?]
+  `(do
+     (defparsefn ~type)
+     (defwritefn ~type ~default?)
+     (defsizefn ~type ~default?)))
 
-(def ^:no-doc numeric-scalars
-  ["Double"
-   "Enum"
-   "Fixed32"
-   "Fixed64"
-   "Float"
-   "Int32"
-   "Int64"
-   "SFixed32"
-   "SFixed64"
-   "SInt32"
-   "SInt64"
-   "UInt32"
-   "UInt64"])
+(def default-scalar? #(or (nil? %) (zero? %)))
+(def default-string? empty?)
+(def default-bool? #(not (true? %)))
 
-(defn- init []
-  (doseq [type numeric-scalars]
-    (defallfn type #(or (nil? %) (zero? %))))
+(defmacro defscalar [type]
+  `(defserdes ~type default-scalar?))
 
-  (defallfn "String" empty?)
-  (defallfn "Bool" #(not (true? %))))
+(defscalar "Double")
+(defscalar "Enum")
+(defscalar "Fixed32")
+(defscalar "Fixed64")
+(defscalar "Float")
+(defscalar "Int32")
+(defscalar "Int64")
+(defscalar "SFixed32")
+(defscalar "SFixed64")
+(defscalar "SInt32")
+(defscalar "SInt64")
+(defscalar "UInt32")
+(defscalar "UInt64")
 
-(init)
+(defserdes "String" default-string?)
+(defserdes "Bool" default-bool?)
 
 ;; manually implement the "Bytes" scalar so we can properly handle native byte-array import/export
 (defn cis->Bytes
