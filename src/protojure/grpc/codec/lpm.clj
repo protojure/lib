@@ -6,7 +6,7 @@
   "Utility functions for GRPC [length-prefixed-message](https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md#requests) encoding."
   (:require [clojure.core.async :refer [<! >! go go-loop] :as async]
             [promesa.core :as p]
-            [protojure.protobuf :as pb]
+            [protojure.protobuf :refer [->pb]]
             [protojure.grpc.codec.compression :as compression]
             [clojure.tools.logging :as log])
   (:import (protojure.internal.grpc.io InputStream
@@ -157,7 +157,7 @@ The value for the **content-coding** option must be one of
   (.write os buf))
 
 (defn- encode-uncompressed [msg os]
-  (let [buf (pb/->pb msg)
+  (let [buf (->pb msg)
         len (count buf)]
     (encode-buffer buf len false os)))
 
@@ -172,7 +172,7 @@ The value for the **content-coding** option must be one of
   "This function will encode the message either with or without compression,
   depending on whichever results in the smaller message"
   [msg compressor os]
-  (let [buf (pb/->pb msg)
+  (let [buf (->pb msg)
         len (count buf)
         cbuf (compress-buffer compressor buf)
         clen (count buf)]

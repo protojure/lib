@@ -3,9 +3,11 @@
 ;; SPDX-License-Identifier: Apache-2.0
 
 (ns example.types
-  (:require [protojure.protobuf :as pb]
-            [protojure.protobuf.serdes :refer :all])
-  (:import (com.google.protobuf CodedInputStream)))
+  (:require [protojure.protobuf.protocol :as pb]
+            [protojure.protobuf.serdes.core :refer :all]
+            [protojure.protobuf.serdes.complex :refer :all]
+            [protojure.protobuf.serdes.utils :refer [tag-map]]
+            [protojure.protobuf.serdes.stream :as stream]))
 
 ;-----------------------------------------------------------------------------
 ; Money
@@ -53,7 +55,7 @@
   "Protobuf to Money"
   [input]
   (-> input
-      CodedInputStream/newInstance
+      stream/new-cis
       cis->Money))
 
 ;-----------------------------------------------------------------------------
@@ -97,7 +99,7 @@
   "Protobuf to SimpleRepeated"
   [input]
   (-> input
-      CodedInputStream/newInstance
+      stream/new-cis
       cis->SimpleRepeated))
 
 ;-----------------------------------------------------------------------------
@@ -141,7 +143,7 @@
   "Protobuf to SimpleString"
   [input]
   (-> input
-      CodedInputStream/newInstance
+      stream/new-cis
       cis->SimpleString))
 
 ;-----------------------------------------------------------------------------
@@ -187,7 +189,7 @@
   "Protobuf to AllThingsMap-MSimpleEntry"
   [input]
   (-> input
-      CodedInputStream/newInstance
+      stream/new-cis
       cis->AllThingsMap-MSimpleEntry))
 
 ;-----------------------------------------------------------------------------
@@ -234,7 +236,7 @@
   "Protobuf to AllThingsMap-MComplexEntry"
   [input]
   (-> input
-      CodedInputStream/newInstance
+      stream/new-cis
       cis->AllThingsMap-MComplexEntry))
 
 ;-----------------------------------------------------------------------------
@@ -287,6 +289,6 @@
   "Protobuf to AllThingsMap"
   [input]
   (-> input
-      CodedInputStream/newInstance
+      stream/new-cis
       cis->AllThingsMap))
 

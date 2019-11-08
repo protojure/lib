@@ -4,12 +4,12 @@
 ;;; Message Implementation of package com.sttgts.omnia.hello
 ;;;----------------------------------------------------------------------------------
 (ns example.hello
-  (:require [protojure.protobuf :as pb]
-            [protojure.protobuf.serdes :refer :all]
-            [clojure.set :as set]
-            [clojure.spec.alpha :as s])
-  (:import (com.google.protobuf
-            CodedInputStream)))
+  (:require [protojure.protobuf.protocol :as pb]
+            [protojure.protobuf.serdes.core :refer :all]
+            [protojure.protobuf.serdes.complex :refer :all]
+            [protojure.protobuf.serdes.utils :refer [tag-map]]
+            [protojure.protobuf.serdes.stream :as stream]
+            [clojure.spec.alpha :as s]))
 
 ;;----------------------------------------------------------------------------------
 ;;----------------------------------------------------------------------------------
@@ -76,7 +76,7 @@
   "Protobuf to HelloRequest"
   [input]
   (-> input
-      CodedInputStream/newInstance
+      stream/new-cis
       cis->HelloRequest))
 
 ;-----------------------------------------------------------------------------
@@ -125,7 +125,7 @@
   "Protobuf to RepeatHelloRequest"
   [input]
   (-> input
-      CodedInputStream/newInstance
+      stream/new-cis
       cis->RepeatHelloRequest))
 
 ;-----------------------------------------------------------------------------
@@ -171,6 +171,6 @@
   "Protobuf to HelloReply"
   [input]
   (-> input
-      CodedInputStream/newInstance
+      stream/new-cis
       cis->HelloReply))
 
