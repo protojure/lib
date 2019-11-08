@@ -4,11 +4,9 @@
 
 (ns protojure.protobuf
   "Main API entry point for protobuf applications"
+  (:require [protojure.protobuf.protocol :refer [serialize]])
   (:import (com.google.protobuf CodedOutputStream)
            (java.io ByteArrayOutputStream)))
-
-(defprotocol Writer
-  (serialize [this os]))
 
 (defn ->pb
   "Serialize a record implementing the [[Writer]] protocol into protobuf bytes."

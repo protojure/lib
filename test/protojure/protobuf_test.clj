@@ -5,7 +5,9 @@
 (ns protojure.protobuf-test
   (:require [clojure.test :refer :all]
             [clojure.core.async :refer [<!! >!! <! >! go] :as async]
-            [protojure.protobuf.serdes :as serdes]
+            [protojure.protobuf.serdes.core :as serdes]
+            [protojure.protobuf.serdes.complex :as serdes.complex]
+            [protojure.protobuf.serdes.utils :refer [tag-map]]
             [protojure.protobuf :refer [->pb]]
             [protojure.grpc.codec.lpm :as lpm]
             [protojure.grpc.codec.compression :as compression]
@@ -24,7 +26,7 @@
 ;;-----------------------------------------------------------------------------
 
 (defn- fns [type]
-  (mapv #(clojure.core/resolve (symbol "protojure.protobuf.serdes" (str % type)))
+  (mapv #(clojure.core/resolve (symbol "protojure.protobuf.serdes.core" (str % type)))
         ["write-" "cis->"]))
 
 (defn- resolve-fns [type]
@@ -57,7 +59,7 @@
   (write serdes/write-embedded tag item))
 
 (defn- write-repeated [writefn tag items]
-  (with-buffer (partial serdes/write-repeated writefn tag items)))
+  (with-buffer (partial serdes.complex/write-repeated writefn tag items)))
 
 (defn- parse [^bytes buf readfn]
   (let [is (CodedInputStream/newInstance buf)]
@@ -66,8 +68,8 @@
 
 (defn- parse-repeated [^bytes buf readfn packable? tag]
   (let [is (CodedInputStream/newInstance buf)
-        f (if packable? (partial serdes/cis->packablerepeated tag) serdes/cis->repeated)]
-    (serdes/tag-map
+        f (if packable? (partial serdes.complex/cis->packablerepeated tag) serdes.complex/cis->repeated)]
+    (tag-map
      (fn [tag index]
        [index (f readfn is)])
      is)))
