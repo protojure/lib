@@ -4,20 +4,18 @@
 
 (ns protojure.protobuf
   "Main API entry point for protobuf applications"
-  (:import (com.google.protobuf
-            CodedOutputStream)))
+  (:import (com.google.protobuf CodedOutputStream)
+           (java.io ByteArrayOutputStream)))
 
 (defprotocol Writer
-  (serialize [this os])
-  (length [this]))
+  (serialize [this os]))
 
 (defn ->pb
   "Serialize a record implementing the [[Writer]] protocol into protobuf bytes."
   ([msg]
-   (let [len (length msg)
-         data (byte-array len)]
-     (->pb msg data)
-     data))
+   (let [os (ByteArrayOutputStream.)]
+     (->pb msg os)
+     (.toByteArray os)))
   ([msg output]
    (let [os (CodedOutputStream/newInstance output)]
      (serialize msg os)

@@ -40,10 +40,7 @@
   pb/Writer
 
   (serialize [this os]
-    (write-String 1  {:optimize true} (:name this) os))
-
-  (length [this]
-    (reduce + [(size-String 1  {:optimize true} (:name this))])))
+    (write-String 1  {:optimize true} (:name this) os)))
 
 (s/def :com.sttgts.omnia.hello.messages.HelloRequest/name string?)
 (s/def ::HelloRequest-spec (s/keys :opt-un [:com.sttgts.omnia.hello.messages.HelloRequest/name]))
@@ -90,11 +87,7 @@
 
   (serialize [this os]
     (write-String 1  {:optimize true} (:name this) os)
-    (write-Int32 2  {:optimize true} (:count this) os))
-
-  (length [this]
-    (reduce + [(size-String 1  {:optimize true} (:name this))
-               (size-Int32 2  {:optimize true} (:count this))])))
+    (write-Int32 2  {:optimize true} (:count this) os)))
 
 (s/def :com.sttgts.omnia.hello.messages.RepeatHelloRequest/name string?)
 (s/def :com.sttgts.omnia.hello.messages.RepeatHelloRequest/count int?)
@@ -142,10 +135,7 @@
   pb/Writer
 
   (serialize [this os]
-    (write-String 1  {:optimize true} (:message this) os))
-
-  (length [this]
-    (reduce + [(size-String 1  {:optimize true} (:message this))])))
+    (write-String 1  {:optimize true} (:message this) os)))
 
 (s/def :com.sttgts.omnia.hello.messages.HelloReply/message string?)
 (s/def ::HelloReply-spec (s/keys :opt-un [:com.sttgts.omnia.hello.messages.HelloReply/message]))

@@ -18,13 +18,7 @@
   (serialize [this os]
     (write-String 1 (:currency_code this) os)
     (write-Int64 2 (:units this) os)
-    (write-Int32 3 (:nanos this) os))
-
-  (length [this]
-    (+
-     (size-String 1 (:currency_code this))
-     (size-Int64 2 (:units this))
-     (size-Int32 3 (:nanos this)))))
+    (write-Int32 3 (:nanos this) os)))
 
 (def Money-defaults {:currency_code "" :units 0 :nanos 0})
 
@@ -69,10 +63,7 @@
   pb/Writer
 
   (serialize [this os]
-    (write-repeated write-Int32 1 (:data this) os))
-
-  (length [this]
-    (size-repeated size-Int32 1 (:data this))))
+    (write-repeated write-Int32 1 (:data this) os)))
 
 (def SimpleRepeated-defaults {:data []})
 
@@ -116,10 +107,7 @@
   pb/Writer
 
   (serialize [this os]
-    (write-String 1  {:optimize true} (:s this) os))
-
-  (length [this]
-    (size-String 1  {:optimize true} (:s this))))
+    (write-String 1  {:optimize true} (:s this) os)))
 
 (def SimpleString-defaults {:s ""})
 
@@ -164,12 +152,7 @@
 
   (serialize [this os]
     (write-String 1  {:optimize true} (:key this) os)
-    (write-Int32 2  {:optimize true} (:value this) os))
-
-  (length [this]
-    (+
-     (size-String 1  {:optimize true} (:key this))
-     (size-Int32 2  {:optimize true} (:value this)))))
+    (write-Int32 2  {:optimize true} (:value this) os)))
 
 (def AllThingsMap-MSimpleEntry-defaults {:key "" :value 0})
 
@@ -215,12 +198,7 @@
 
   (serialize [this os]
     (write-String 1  {:optimize true} (:key this) os)
-    (write-embedded 2 (:value this) os))
-
-  (length [this]
-    (+
-     (size-String 1  {:optimize true} (:key this))
-     (size-embedded 2 (:value this)))))
+    (write-embedded 2 (:value this) os)))
 
 (def AllThingsMap-MComplexEntry-defaults {:key ""})
 
@@ -270,15 +248,7 @@
     (write-Int32 2  {:optimize true} (:i this) os)
     (write-map new-AllThingsMap-MSimpleEntry 3 (:mSimple this) os)
     (write-map new-AllThingsMap-MComplexEntry 4 (:mComplex this) os)
-    (write-embedded 5 (:sSimple this) os))
-
-  (length [this]
-    (+
-     (size-String 1  {:optimize true} (:s this))
-     (size-Int32 2  {:optimize true} (:i this))
-     (size-map new-AllThingsMap-MSimpleEntry 3 (:mSimple this))
-     (size-map new-AllThingsMap-MComplexEntry 4 (:mComplex this))
-     (size-embedded 5 (:sSimple this)))))
+    (write-embedded 5 (:sSimple this) os)))
 
 (def AllThingsMap-defaults {:s "" :i 0 :mSimple [] :mComplex []})
 

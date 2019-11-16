@@ -151,25 +151,20 @@ The value for the **content-coding** option must be one of
 ;;--------------------------------------------------------------------------------------
 ;; Encoder
 ;;--------------------------------------------------------------------------------------
-(defn- encode-header [os compressed? len]
+(defn- encode-buffer [buf len compressed? os]
   (.write os (int (if compressed? 1 0)))
-  (.write os (num->bytes len)))
-
-(defn- encode-uncompressed
-  ([msg os]
-   (encode-uncompressed msg (pb/length msg) os))
-  ([msg len os]
-   (encode-header os false len)
-   (pb/->pb msg os)))
-
-(defn- encode-compressed-buffer [buf len os]
-  (encode-header os true len)
+  (.write os (num->bytes len))
   (.write os buf))
 
-(defn- compress-msg [compressor msg]
+(defn- encode-uncompressed [msg os]
+  (let [buf (pb/->pb msg)
+        len (count buf)]
+    (encode-buffer buf len false os)))
+
+(defn- compress-buffer [compressor buf]
   (let [os (ByteArrayOutputStream.)
         cos (compressor os)]
-    (pb/->pb msg cos)
+    (.write cos buf)
     (.close cos)
     (.toByteArray os)))
 
@@ -177,12 +172,13 @@ The value for the **content-coding** option must be one of
   "This function will encode the message either with or without compression,
   depending on whichever results in the smaller message"
   [msg compressor os]
-  (let [buf (compress-msg compressor msg)
-        clen (count buf)
-        len (pb/length msg)]
+  (let [buf (pb/->pb msg)
+        len (count buf)
+        cbuf (compress-buffer compressor buf)
+        clen (count buf)]
     (if (< clen len)
-      (encode-compressed-buffer buf clen os)
-      (encode-uncompressed msg len os))))
+      (encode-buffer cbuf clen true os)
+      (encode-buffer buf len false os))))
 
 ;;--------------------------------------------------------------------------------------------
 (defn encode

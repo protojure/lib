@@ -14,7 +14,7 @@
             [example.types :as example])
   (:import (com.google.protobuf CodedOutputStream
                                 CodedInputStream)
-           (java.io ByteArrayInputStream)
+           (java.io ByteArrayOutputStream)
            (org.apache.commons.io.input CloseShieldInputStream)
            (org.apache.commons.io.output CloseShieldOutputStream))
   (:refer-clojure :exclude [resolve]))
@@ -25,11 +25,11 @@
 
 (defn- fns [type]
   (mapv #(clojure.core/resolve (symbol "protojure.protobuf.serdes" (str % type)))
-        ["size-" "write-" "cis->"]))
+        ["write-" "cis->"]))
 
 (defn- resolve-fns [type]
-  (let [[sizefn writefn parsefn] (fns type)]
-    {:sizefn sizefn :writefn writefn :parsefn parsefn}))
+  (let [[writefn parsefn] (fns type)]
+    {:writefn writefn :parsefn parsefn}))
 
 (defn- pbverify
   "End to end serdes testing for a specific message"
@@ -40,23 +40,24 @@
 
 (defn- with-buffer
   "Invokes 'f' with a fully formed buffered output-stream and returns the bytes"
-  [len f]
-  (let [buf (byte-array len)
-        os (CodedOutputStream/newInstance buf)]
-    (f os)
-    (.flush os)
-    buf))
+  [f]
+  (let [os (ByteArrayOutputStream.)
+        cos (CodedOutputStream/newInstance os)]
+    (f cos)
+    (.flush cos)
+    (.toByteArray os)))
 
-(defn- write [sizefn writefn tag value]
-  (let [len (sizefn tag value)]
-    (with-buffer len (partial writefn tag value))))
+(defn- size [f]
+  (count (with-buffer f)))
+
+(defn- write [writefn tag value]
+  (with-buffer (partial writefn tag value)))
 
 (defn- write-embedded [tag item]
-  (write serdes/size-embedded serdes/write-embedded tag item))
+  (write serdes/write-embedded tag item))
 
-(defn- write-repeated [sizefn writefn tag items]
-  (let [len (serdes/size-repeated sizefn tag items)]
-    (with-buffer len (partial serdes/write-repeated writefn tag items))))
+(defn- write-repeated [writefn tag items]
+  (with-buffer (partial serdes/write-repeated writefn tag items)))
 
 (defn- parse [^bytes buf readfn]
   (let [is (CodedInputStream/newInstance buf)]
@@ -131,8 +132,8 @@
 (defn- validate-e2e
   "validate that we can do a complete end-to-end serialize->deserialize cycle"
   [{:keys [type input]}]
-  (let [{:keys [sizefn writefn parsefn]} (resolve-fns type)
-        output (-> (write sizefn writefn tag input)
+  (let [{:keys [writefn parsefn]} (resolve-fns type)
+        output (-> (write writefn tag input)
                    (parse parsefn))]
 
     (is (data-equal? input output))))
@@ -146,22 +147,21 @@
   A correct functioning optimizer will elide the write, resulting in no errors
   even despite our bogus stream."
   [{:keys [type input default]}]
-  (let [{:keys [writefn sizefn]} (resolve-fns type)]
-    (is (pos? (sizefn tag input)))
-    (is (zero? (sizefn tag default)))
-    (is (pos? (sizefn tag {:optimize false} default)))
+  (let [{:keys [writefn]} (resolve-fns type)]
+    (is (pos? (size (partial writefn tag input))))
+    (is (zero? (size (partial writefn tag default))))
+    (is (pos? (size (partial writefn tag {:optimize false} default))))
     (writefn tag default nil)))
 
 (defn- validate-repeated
   [{:keys [type input packable? repeatfn]}]
-  (let [{:keys [sizefn writefn parsefn]} (resolve-fns type)
+  (let [{:keys [writefn parsefn]} (resolve-fns type)
         items (vec (repeatfn 10 input))
-        output (-> (write-repeated sizefn writefn tag items)
+        output (-> (write-repeated writefn tag items)
                    (parse-repeated parsefn packable? tag)
                    (get tag))]
 
-    (is (data-equal? items output))
-    (is (zero? (serdes/size-repeated sizefn tag [])))))
+    (is (data-equal? items output))))
 
 ;; We add a silly codec named "mycustom" that does nothing.  We use the CloseShieldXXX family
 ;; of proxy stream classes so that we pass the IO through, but bury the (.close) operation. This
@@ -256,7 +256,7 @@
 
 (deftest embedded-nil-test
   (testing "Check that embedded but unset messages are handled properly"
-    (is (zero? (serdes/size-embedded tag nil)))
+    (is (zero? (size (partial serdes/write-embedded tag nil))))
     (serdes/write-embedded tag nil nil)))
 
 (deftest grpc-lpm-test

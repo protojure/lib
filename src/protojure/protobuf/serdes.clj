@@ -80,23 +80,10 @@
         (when-not (and (get options# :optimize true) (~default? value#))
           (. os# ~sym tag# value#))))))
 
-(defmacro defsizefn [type default?]
-  (let [name (symbol (str "size-" type))
-        sym (symbol (str "compute" type "Size"))
-        doc (format "Compute length of serialized '%s' type" type)]
-    `(defn ~name ~doc
-       ([tag# value#]
-        (~name tag# {} value#))
-       ([tag# options# value#]
-        (if-not (and (get options# :optimize true) (~default? value#))
-          (. CodedOutputStream ~sym tag# value#)
-          0)))))
-
 (defmacro defserdes [type default?]
   `(do
      (defparsefn ~type)
-     (defwritefn ~type ~default?)
-     (defsizefn ~type ~default?)))
+     (defwritefn ~type ~default?)))
 
 (def default-scalar? #(or (nil? %) (zero? %)))
 (def default-string? empty?)
@@ -136,16 +123,6 @@
    (when-not (and optimize (empty? value))
      (let [bytestring (ByteString/copyFrom value)]
        (.writeBytes os tag bytestring)))))
-
-(defn size-Bytes
-  "Compute length of serialized 'Bytes' type"
-  ([tag value]
-   (size-Bytes tag {} value))
-  ([tag {:keys [optimize] :or {optimize true} :as options} value]
-   (if-not (and optimize (empty? value))
-     (let [bytestring (ByteString/copyFrom value)]
-       (CodedOutputStream/computeBytesSize tag bytestring))
-     0)))
 
 (defn cis->undefined
   "Deserialize an unknown type, retaining its tag/type"
@@ -208,11 +185,13 @@
 (defn write-embedded
   "Serialize an embedded type along with tag/length metadata"
   [tag item os]
-  (let [len (if (some? item) (pb/length item) 0)]
-    (when-not (zero? len)
-      (.writeTag os tag 2);; embedded messages are always type=2 (string)
-      (.writeUInt32NoTag os len)
-      (pb/serialize item os))))
+  (when (some? item)
+    (let [bytes (pb/->pb item)
+          len (count bytes)]
+      (when-not (zero? len)
+        (.writeTag os tag 2);; embedded messages are always type=2 (string)
+        (.writeUInt32NoTag os len)
+        (.writeRawBytes os bytes)))))
 
 ;; FIXME: Add support for optimizing packable types
 (defn write-repeated
@@ -225,25 +204,3 @@
   "Serialize user format [key val] using given map item constructor"
   [constructor tag items os]
   (write-repeated write-embedded tag (map (fn [[key value]] (constructor {:key key :value value})) items) os))
-
-(defn size-embedded
-  "Compute length of serialized embedded type, including the metadata header"
-  [tag item]
-  (let [len (if (some? item) (pb/length item) 0)]
-    (if-not (zero? len)
-      (+
-       (size-UInt32 tag {:optimize false} len)  ;; This accounts for the tag+length preamble
-       len)                   ;; And this is the embedded item itself
-      0)))
-
-(defn size-repeated
-  "Compute length of serialized repeated type"
-  [f tag items]
-  (if-not (empty? items)
-    (reduce + (map (partial f tag) items))
-    0))
-
-(defn size-map
-  "Compute length of user format [key val] using given map item constructor"
-  [constructor tag item]
-  (size-repeated size-embedded tag (map (fn [[key value]] (constructor {:key key :value value})) item)))
