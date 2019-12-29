@@ -4,7 +4,7 @@ Native Clojure support for [Google Protocol Buffer](https://developers.google.co
 
 ## Documentation
 
-You can read the [SDK CLJ documentation](https://cljdoc.org/d/protojure/protojure/1.0.0)
+You can read the [SDK CLJ documentation](https://cljdoc.org/d/protojure/protojure)
 
 ## Usage
 
