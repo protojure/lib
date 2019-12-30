@@ -23,6 +23,25 @@
    :trailers {"Meta" "test"}
    :body "OK"})
 
+(defn- get-bytes [_]
+  {:status   200
+   :headers  {"Content-Type" "application/text"}
+   :trailers {"Meta" "test"}
+   :body     (byte-array [(byte 0x43)
+                          (byte 0x6c)
+                          (byte 0x6f)
+                          (byte 0x6a)
+                          (byte 0x75)
+                          (byte 0x72)
+                          (byte 0x65)
+                          (byte 0x21)])})
+
+(defn- get-edn [_]
+  {:status   200
+   :headers  {"Content-Type" "application/text"}
+   :trailers {"Meta" "test"}
+   :body     {:key "clojure is awesome"}})
+
 (defn- echo-params [{{:keys [content]} :params}]
   {:status 200 :body content})
 
@@ -44,7 +63,9 @@
    ["/echo" :get (conj interceptors `echo-params)]
    ["/echo" :post (conj interceptors `echo-body)]
    ["/echo/async" :get (conj interceptors `echo-async)]
-   ["/testdata" :get (conj interceptors `testdata-download)]])
+   ["/testdata" :get (conj interceptors `testdata-download)]
+   ["/bytes" :get (conj interceptors `get-bytes)]
+   ["/edn" :get (conj interceptors `get-edn)]])
 
 ;;-----------------------------------------------------------------------------
 ;; Utilities
@@ -119,6 +140,14 @@
 (deftest file-download-check
   (testing "Check that we can download a file"
     (is (->> (client/get (service-url "/testdata")) :body (re-find #"testdata!") some?))))
+
+(deftest bytes-check
+  (testing "Check that bytes transfer correctly"
+    (is (-> (client/get (service-url "/bytes")) :body (= "Clojure!")))))
+
+(deftest edn-check
+  (testing "Check that EDN format transfers"
+    (is (-> (client/get (service-url "/edn")) :body clojure.edn/read-string (= {:key "clojure is awesome"})))))
 
 (deftest notfound-check
   (testing "Check that a request for an invalid resource correctly propagates the error code"
