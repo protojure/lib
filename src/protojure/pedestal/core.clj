@@ -176,7 +176,7 @@
     (write-streaming-data ch is)))
 (defmethod transmit-body :default
   [ch resp-body]
-  (write-direct-data ch resp-body))
+  (transmit-body ch (with-out-str (pr resp-body))))
 
 (defmulti ^:no-doc transmit-trailers
   "Handle transmitting the trailers based on the type"
