@@ -48,3 +48,7 @@ $(OUTPUT): $(DEPS)
 
 clean:
 	$(LEIN) clean
+
+.PHONY: protos
+protos:
+	protoc --clojure_out=grpc-client,grpc-server:test --proto_path=test/resources $(shell find test/resources -name "*.proto" | sed 's|test/resources/||g')
