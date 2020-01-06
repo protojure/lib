@@ -1,9 +1,9 @@
-(defproject protojure "1.1.1-SNAPSHOT"
+(defproject protojure "1.2.0-SNAPSHOT"
   :description "Support library for protoc-gen-clojure, providing native Clojure support for Google Protocol Buffers and GRPC applications"
   :url "http://github.com/protojure/library"
   :license {:name "Apache License 2.0"
             :url "https://www.apache.org/licenses/LICENSE-2.0"
-            :year 2019
+            :year 2020
             :key "apache-2.0"}
   :plugins [[lein-codox "0.10.4"]
             [lein-cljfmt "0.5.7"]
@@ -27,7 +27,8 @@
         protojure.internal.pedestal.io]
   :codox {:metadata {:doc/format :markdown}
           :namespaces [#"^(?!protojure.internal)"]}
-  :profiles {:dev {:dependencies [[org.clojure/tools.namespace "0.3.1"]
+  :profiles {:dev {:dependencies [[protojure/google.protobuf "0.9.1"]
+                                  [org.clojure/tools.namespace "0.3.1"]
                                   [clj-http "3.10.0"]
                                   [com.taoensso/timbre "4.10.0"]
                                   [org.clojure/data.codec "0.1.1"]]

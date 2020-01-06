@@ -9,11 +9,13 @@
             [protojure.protobuf.serdes.complex :as serdes.complex]
             [protojure.protobuf.serdes.utils :refer [tag-map]]
             [protojure.protobuf :refer [->pb]]
+            [protojure.protobuf.any :refer [any-> ->any] :as any]
             [protojure.grpc.codec.lpm :as lpm]
             [protojure.grpc.codec.compression :as compression]
             [protojure.test.utils :refer [data-equal?]]
             [promesa.core :as p]
-            [example.types :as example])
+            [example.types :as example]
+            [com.example.addressbook :as addressbook])
   (:import (com.google.protobuf CodedOutputStream
                                 CodedInputStream)
            (java.io ByteArrayOutputStream)
@@ -308,3 +310,22 @@
         (if-let [_ (<!! output)]
           (recur)
           (is (thrown? Exception @pipeline)))))))
+
+(deftest test-any-e2e
+  (testing "Verify that we properly support the protobuf Any type end-to-end"
+    (let [input "TestAny"
+          output (-> {:name input}
+                     addressbook/new-Person
+                     ->any
+                     ->pb
+                     any/pb->
+                     :name)]
+      (is (-> input (= output))))))
+
+(deftest test-any-bad-encoding
+  (testing "Verify that we gracefully handle an invalid input to Any encoding"
+    (is (thrown? java.lang.IllegalArgumentException (->any {:foo "bar"})))))
+
+(deftest test-any-bad-decoding
+  (testing "Verify that we gracefully handle an invalid input to Any decoding"
+    (is (thrown? clojure.lang.ExceptionInfo (any/pb-> (byte-array [10 8 74 97 110 101 32 68 111 101]))))))
