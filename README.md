@@ -1,5 +1,7 @@
 # protojure [![CircleCI](https://circleci.com/gh/protojure/lib.svg?style=svg)](https://circleci.com/gh/protojure/lib)
 
+[![Clojars Project](https://img.shields.io/clojars/v/protojure.svg)](https://clojars.org/protojure)
+
 Native Clojure support for [Google Protocol Buffer](https://developers.google.com/protocol-buffers/) and [GRPC](https://grpc.io/).
 
 ## Documentation
