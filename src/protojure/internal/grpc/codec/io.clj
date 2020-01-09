@@ -117,7 +117,7 @@
   [this]
   (let [{:keys [ch framed?]} (.state this)]
     (when framed?
-      (async/put! ch :flush))))
+      (async/>!! ch :flush))))
 
 (defn- os-close
   [this]
@@ -127,4 +127,4 @@
 (defn- os-write-int
   [this b]
   (let [{:keys [ch]} (.state this)]
-    (async/put! ch (bit-and b 0xFF))))
+    (async/>!! ch (bit-and b 0xFF))))
