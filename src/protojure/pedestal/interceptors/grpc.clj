@@ -26,7 +26,7 @@
 (defn- create-req-ctx
   [f {:keys [body-ch] {:strs [grpc-encoding] :or {grpc-encoding "identity"}} :headers :as req}]
   (let [in body-ch
-        out (async/chan 16)]
+        out (async/chan 128)]
     {:in       in
      :out      out
      :encoding grpc-encoding
@@ -34,8 +34,8 @@
 
 (defn- create-resp-ctx
   [f {{:strs [grpc-accept-encoding] :or {grpc-accept-encoding ""}} :headers :as req}]
-  (let [in (async/chan 16)
-        out (async/chan 16)
+  (let [in (async/chan 128)
+        out (async/chan 128)
         encoding (or (determine-output-encoding grpc-accept-encoding) "identity")]
     {:in       in
      :out      out
