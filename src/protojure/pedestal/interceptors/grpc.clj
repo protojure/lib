@@ -67,12 +67,11 @@
 (defn- grpc-leave
   "<leave> interceptor for handling GRPC responses"
   [{:keys [server-streaming] :as rpc-metadata}
-   {:keys [response] {:keys [req-ctx resp-ctx]} ::ctx :as context}]
-
+   {{:keys [body] :as response} :response {:keys [req-ctx resp-ctx]} ::ctx :as context}]
   ;; special-case unary return types
   (when-not server-streaming
     (let [output-ch (:in resp-ctx)]
-      (async/put! output-ch (:body response))
+      (when (some? body) (async/>!! output-ch body))
       (async/close! output-ch)))
 
   (let [trailers-ch (async/promise-chan)]

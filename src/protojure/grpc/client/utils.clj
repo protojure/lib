@@ -16,7 +16,9 @@
 (defn- put [ch val]
   (p/promise
    (fn [resolve reject]
-     (async/put! ch val resolve))))
+     (if (some? val)
+       (async/put! ch val resolve)
+       (resolve true)))))
 
 (defn send-unary-params
   "
