@@ -77,10 +77,10 @@
   (let [trailers-ch (async/promise-chan)]
     ;; defer sending trailers until our IO has completed
     (-> (p/all (mapv :status [req-ctx resp-ctx]))
-        (p/then (fn [_] (async/put! trailers-ch (generate-trailers response))))
+        (p/then (fn [_] (async/>!! trailers-ch (generate-trailers response))))
         (p/catch (fn [ex]
                    (log/error "Pipeline error: " ex)
-                   (async/put! trailers-ch (generate-trailers {:grpc-status 13})))))
+                   (async/>!! trailers-ch (generate-trailers {:grpc-status 13})))))
 
     (update context :response
             #(assoc %

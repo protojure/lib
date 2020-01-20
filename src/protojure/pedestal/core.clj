@@ -10,7 +10,7 @@
             [io.pedestal.log :as log]
             [clojure.string :as string]
             [clojure.pprint :refer [pprint]]
-            [clojure.core.async :refer [go-loop <!! <! go chan >!! >! close! put! timeout poll!]]
+            [clojure.core.async :refer [go-loop <!! <! go chan >!! >! close! timeout poll!]]
             [promesa.core :as p]
             [clojure.java.io :as io]
             [protojure.pedestal.ssl :as ssl])
