@@ -105,7 +105,7 @@
           (stream-log :trace stream "Received DATA-FRAME (" len " bytes) ENDFRAME=" last?)
           (when (some? data-ch)
             (doseq [b (repeatedly len #(.get data))]
-              (async/put! data-ch (bit-and 0xff b)))) ;; FIXME: cast to byte?
+              (async/>!! data-ch (bit-and 0xff b)))) ;; FIXME: cast to byte?
           (when last?
             (end-stream! stream)))
         (.succeeded callback))
