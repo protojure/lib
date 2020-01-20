@@ -124,7 +124,12 @@
   (SayHelloError
     [this req]
     {:status 200
-     :body "This isn't a protobuf message"}))
+     :body "This isn't a protobuf message"})
+  (SayNil
+    [this req]
+    {:body        nil
+     :grpc-status 7
+     :grpc-message "UNAUTHENTICATED"}))
 
 (defn- service-mock-routes [interceptors]
   (pedestal.routes/->tablesyntax {:rpc-metadata greeter/rpc-metadata
@@ -368,6 +373,22 @@
            (p/then (fn [{:keys [message] :as result}]
                      (is (= message "Hello, World"))))))))
 
+;;Note there are qualitative differences between this nil & error check and the below grpc-failing-status-check test
+;; this test is run against an endpoint registrered in the pedestal interceptor stack, and so exercises
+;; protojure.pedestal.interceptors.grpc pedestal interceptor, where the aforementioned below test does not
+(deftest nil-check
+  (testing "Check that nil body and grpc-status error code propagates to client"
+    (let [client (:grpc-client @test-env)
+          input (async/chan 16)
+          output (async/chan 16)
+          desc {:service "example.hello.Greeter"
+                :method "SayNil"
+                :input {:f example/new-Money :ch input}
+                :output {:f example/pb->Money :ch output}}]
+      @(client.utils/send-unary-params input nil)
+      (is (thrown? java.util.concurrent.ExecutionException
+                   @(client.utils/invoke-unary client desc output))))))
+
 (deftest streaming-grpc-check
   (testing "Check that a round-trip streaming GRPC request works"
     (let [repetitions 50
@@ -452,4 +473,5 @@
                  "/example.hello.Greeter/SayRepeatHello"
                  "/example.hello.Greeter/SayHelloAfterDelay"
                  "/example.hello.Greeter/SayHelloOnDemand"
-                 "/example.hello.Greeter/SayHelloError"])))))
+                 "/example.hello.Greeter/SayHelloError"
+                 "/example.hello.Greeter/SayNil"])))))

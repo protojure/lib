@@ -20,7 +20,8 @@
   (SayRepeatHello [this param])
   (SayHelloAfterDelay [this param])
   (SayHelloOnDemand [this param])
-  (SayHelloError [this param]))
+  (SayHelloError [this param])
+  (SayNil [this param]))
 
 (defn- SayHello-dispatch
   [ctx request]
@@ -37,11 +38,15 @@
 (defn- SayHelloError-dispatch
   [ctx request]
   (SayHelloError ctx request))
+(defn- SayNil-dispatch
+  [ctx request]
+  (SayNil ctx request))
 
 (def ^:const rpc-metadata
   [{:pkg "example.hello" :service "Greeter" :method "SayHello" :method-fn SayHello-dispatch :server-streaming false :client-streaming false :input pb->HelloRequest :output new-HelloReply}
    {:pkg "example.hello" :service "Greeter" :method "SayRepeatHello" :method-fn SayRepeatHello-dispatch :server-streaming true :client-streaming false :input pb->RepeatHelloRequest :output new-HelloReply}
    {:pkg "example.hello" :service "Greeter" :method "SayHelloAfterDelay" :method-fn SayHelloAfterDelay-dispatch :server-streaming false :client-streaming false :input pb->HelloRequest :output new-HelloReply}
    {:pkg "example.hello" :service "Greeter" :method "SayHelloOnDemand" :method-fn SayHelloOnDemand-dispatch :server-streaming true :client-streaming true :input pb->HelloRequest :output new-HelloReply}
-   {:pkg "example.hello" :service "Greeter" :method "SayHelloError" :method-fn SayHelloError-dispatch :server-streaming false :client-streaming false :input pb->HelloRequest :output new-HelloReply}])
+   {:pkg "example.hello" :service "Greeter" :method "SayHelloError" :method-fn SayHelloError-dispatch :server-streaming false :client-streaming false :input pb->HelloRequest :output new-HelloReply}
+   {:pkg "example.hello" :service "Greeter" :method "SayNil" :method-fn SayNil-dispatch :server-streaming false :client-streaming false :input pb->HelloRequest :output new-HelloReply}])
 
