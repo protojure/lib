@@ -112,13 +112,13 @@
 ;;-----------------------------------------------------------------------------
 ;; Provider
 ;;-----------------------------------------------------------------------------
-(deftype Http2Provider [context uri codecs content-coding max-frame-size]
+(deftype Http2Provider [context uri codecs content-coding max-frame-size input-buffer-size]
   api/Provider
 
   (invoke [_ {:keys [input output] :as params}]
     (let [input-ch (input-pipeline input codecs content-coding max-frame-size)
           meta-ch (async/chan 32)
-          output-ch (when (some? output) (async/chan 16384))]
+          output-ch (when (some? output) (async/chan input-buffer-size))]
       (-> (send-request context uri codecs content-coding params input-ch meta-ch output-ch)
           (p/then (partial receive-headers meta-ch))
           (p/then (partial receive-payload codecs meta-ch output-ch output))

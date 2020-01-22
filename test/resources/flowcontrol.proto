@@ -1,0 +1,18 @@
+syntax = "proto3";
+package protojure.test.flowcontrol;
+
+message StreamOutRequest {
+    int32 count = 1;
+    int32 payload_size = 2;
+
+}
+
+message Payload {
+    int32 id = 1;
+    bytes data = 2;
+}
+
+service FlowControl {
+    rpc StreamOut (StreamOutRequest) returns (stream Payload);
+}
+
