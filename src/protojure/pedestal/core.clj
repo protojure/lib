@@ -67,10 +67,18 @@
   (lazy-seq (when-some [data (poll! ch)]
               (cons data (async-poll-seq ch)))))
 
+(defn- -write
+  [ch buf len]
+  (.awaitWritable ch)
+  (let [bytes-written (.write ch buf)
+        bytes-remain (- len bytes-written)]
+    (when-not (zero? bytes-remain)
+      (-write ch buf bytes-remain))))
+
 (defn- write-data
   "Writes the provided bytes to the undertow response channel"
   [ch data]
-  (.write ch (ByteBuffer/wrap data)))
+  (-write ch (ByteBuffer/wrap data) (count data)))
 
 (defn- flush
   [ch]

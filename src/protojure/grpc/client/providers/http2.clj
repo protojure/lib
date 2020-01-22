@@ -18,19 +18,20 @@ Connects the client to a [GRPC-HTTP2](https://github.com/grpc/grpc/blob/master/d
 #### Parameters
 A map with the following entries:
 
-| Value              | Type     | Default | Description                                                               |
-|--------------------|----------|-------------------------------------------------------------------------------------|
-| **uri**            | _String_ | n/a     | The URI of the GRPC server                                                |
-| **codecs**         | _map_    | [[protojure.grpc.codec.core/builtin-codecs]] | Optional custom codecs               |
-| **content-coding** | _String_ | nil     | The encoding to use on request data                                       |
-| **max-frame-size** | _UInt32_ | 16384   | The maximum HTTP2 DATA frame size                                         |
+| Value                 | Type     | Default | Description                                                               |
+|-----------------------|----------|-------------------------------------------------------------------------------------|
+| **uri**               | _String_ | n/a     | The URI of the GRPC server                                                |
+| **codecs**            | _map_    | [[protojure.grpc.codec.core/builtin-codecs]] | Optional custom codecs               |
+| **content-coding**    | _String_ | nil     | The encoding to use on request data                                       |
+| **max-frame-size**    | _UInt32_ | 16384   | The maximum HTTP2 DATA frame size                                         |
+| **input-buffer-size** | _UInt32_ | 16M     | The input-buffer size                                                     |
 
 #### Return value
 A promise that, on success, evaluates to an instance of [[api/Provider]].
 _(api/disconnect)_ should be used to release any resources when the connection is no longer required.
   "
-  [{:keys [uri codecs content-coding max-frame-size] :or {codecs builtin-codecs max-frame-size 16384} :as params}]
+  [{:keys [uri codecs content-coding max-frame-size input-buffer-size] :or {codecs builtin-codecs max-frame-size 16384 input-buffer-size 16384} :as params}]
   (log/debug "Connecting with GRPC-HTTP2:" params)
   (let [{:keys [host port]} (lambdaisland/uri uri)]
-    (-> (jetty/connect {:host host :port (Integer/parseInt port)})
-        (p/then #(core/->Http2Provider % uri codecs content-coding max-frame-size)))))
+    (-> (jetty/connect {:host host :port (Integer/parseInt port) :input-buffer-size input-buffer-size})
+        (p/then #(core/->Http2Provider % uri codecs content-coding max-frame-size input-buffer-size)))))

@@ -159,12 +159,15 @@
 ;; Exposed API
 ;;------------------------------------------------------------------------------------
 
-(defn connect [{:keys [host port] :or {host "localhost" port 80} :as params}]
+(defn connect [{:keys [host port input-buffer-size] :or {host "localhost" port 80 input-buffer-size 16384} :as params}]
   (let [client (HTTP2Client.)
         address (InetSocketAddress. ^String host (int port))
         listener (ServerSessionListener$Adapter.)]
     (log/debug "Connecting with parameters: " params)
     (.start client)
+    (.setInputBufferSize client input-buffer-size)
+    (.setInitialStreamRecvWindow client input-buffer-size)
+    (.setInitialSessionRecvWindow client input-buffer-size)
     (-> (jetty-promise
          (fn [p]
            (.connect client nil address listener p)))

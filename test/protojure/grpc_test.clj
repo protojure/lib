@@ -12,6 +12,7 @@
             [taoensso.timbre :as log]
             [taoensso.timbre.appenders.core :as appenders]
             [taoensso.timbre.tools.logging :refer [use-timbre]]
+            [clojure.data.generators :as gen]
             [protojure.pedestal.core :as protojure.pedestal]
             [protojure.pedestal.routes :as pedestal.routes]
             [protojure.grpc.client.api :as grpc]
@@ -21,7 +22,9 @@
             [protojure.test.utils :as test.utils :refer [data-equal?]]
             [example.types :as example]
             [example.hello :refer [new-HelloRequest pb->HelloRequest new-HelloReply pb->HelloReply]]
-            [example.hello.Greeter :as greeter])
+            [example.hello.Greeter :as greeter]
+            [protojure.test.flowcontrol.FlowControl.server :as flowcontrol.server]
+            [protojure.test.flowcontrol.FlowControl.client :as flowcontrol])
   (:refer-clojure :exclude [resolve]))
 
 (log/set-config! {:level :trace
@@ -131,15 +134,33 @@
      :grpc-status 7
      :grpc-message "UNAUTHENTICATED"}))
 
-(defn- service-mock-routes [interceptors]
+;;-----------------------------------------------------------------------------
+;; "FlowControl" service endpoint
+;;-----------------------------------------------------------------------------
+(deftype FlowControl []
+  flowcontrol.server/Service
+  (StreamOut
+    [_ {{:keys [count payload-size]} :grpc-params :keys [grpc-out] :as request}]
+    (go
+      (dotimes [i count]
+        (>! grpc-out {:id i :data (byte-array (repeatedly payload-size gen/byte))}))
+      (async/close! grpc-out))
+    (:body grpc-out)))
+
+(defn- greeter-mock-routes [interceptors]
   (pedestal.routes/->tablesyntax {:rpc-metadata greeter/rpc-metadata
                                   :interceptors interceptors
                                   :callback-context (Greeter.)}))
 
+(defn- flowcontrol-mock-routes [interceptors]
+  (pedestal.routes/->tablesyntax {:rpc-metadata flowcontrol.server/rpc-metadata
+                                  :interceptors interceptors
+                                  :callback-context (FlowControl.)}))
 (defn routes [interceptors]
   (concat
    (generic-mock-routes interceptors)
-   (service-mock-routes interceptors)))
+   (greeter-mock-routes interceptors)
+   (flowcontrol-mock-routes interceptors)))
 
 ;;-----------------------------------------------------------------------------
 ;; Utilities
@@ -475,3 +496,12 @@
                  "/example.hello.Greeter/SayHelloOnDemand"
                  "/example.hello.Greeter/SayHelloError"
                  "/example.hello.Greeter/SayNil"])))))
+
+(deftest test-grpc-flowcontrol
+  (testing "Check that a round-trip GRPC request works"
+    (let [output (async/chan 1)
+          client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env)) :input-buffer-size 128})
+          count 1024]
+      (flowcontrol/StreamOut client {:count count :payload-size 1024} output)
+      (Thread/sleep 5000)
+      (is (= count (async/<!! (clojure.core.async/reduce (fn [c _] (inc c)) 0 output)))))))
