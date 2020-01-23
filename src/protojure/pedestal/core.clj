@@ -69,10 +69,10 @@
 
 (defn- -write
   [ch buf len]
-  (.awaitWritable ch)
   (let [bytes-written (.write ch buf)
         bytes-remain (- len bytes-written)]
     (when-not (zero? bytes-remain)
+      (.awaitWritable ch)
       (-write ch buf bytes-remain))))
 
 (defn- write-data
