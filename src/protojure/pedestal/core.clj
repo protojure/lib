@@ -10,12 +10,13 @@
             [io.pedestal.log :as log]
             [clojure.string :as string]
             [clojure.pprint :refer [pprint]]
-            [clojure.core.async :refer [go-loop <!! <! go chan >!! >! close! timeout poll!]]
+            [clojure.core.async :refer [go-loop <!! <! go chan >!! >! close! timeout poll! promise-chan]]
             [promesa.core :as p]
             [clojure.java.io :as io]
             [protojure.pedestal.ssl :as ssl])
   (:import (io.undertow.server HttpHandler
-                               HttpServerExchange)
+                               HttpServerExchange
+                               ServerConnection$CloseListener)
            (io.undertow Undertow
                         UndertowOptions)
            (io.undertow.server.protocol.http HttpAttachments)
@@ -202,6 +203,15 @@
   [exchange trailers]
   (p/resolved (write-trailers exchange trailers)))
 
+(defn subscribe-close [exchange]
+  (let [conn (.getConnection exchange)
+        ch (promise-chan)]
+    (.addCloseListener conn
+                       (reify ServerConnection$CloseListener
+                         (closed [_ _]
+                           (>!! ch true))))
+    ch))
+
 (declare handle-response)
 
 (defn- handle-request
@@ -217,6 +227,7 @@
                           :headers          (get-request-headers exchange)
                           :body             input-stream
                           :body-ch          input-ch
+                          :close-ch         (subscribe-close exchange)
                           :uri              (.getRequestURI exchange)
                           :path-info        (.getRequestPath exchange)
                           :async-supported? true}
