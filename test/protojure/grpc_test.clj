@@ -13,6 +13,7 @@
             [taoensso.timbre.appenders.core :as appenders]
             [taoensso.timbre.tools.logging :refer [use-timbre]]
             [clojure.data.generators :as gen]
+            [clj-uuid :as uuid]
             [protojure.pedestal.core :as protojure.pedestal]
             [protojure.pedestal.routes :as pedestal.routes]
             [protojure.grpc.client.api :as grpc]
@@ -24,7 +25,9 @@
             [example.hello :refer [new-HelloRequest pb->HelloRequest new-HelloReply pb->HelloReply]]
             [example.hello.Greeter :as greeter]
             [protojure.test.flowcontrol.FlowControl.server :as flowcontrol.server]
-            [protojure.test.flowcontrol.FlowControl.client :as flowcontrol])
+            [protojure.test.flowcontrol.FlowControl.client :as flowcontrol]
+            [protojure.test.closedetect.CloseDetect.server :as closedetect.server]
+            [protojure.test.closedetect.CloseDetect.client :as closedetect])
   (:refer-clojure :exclude [resolve]))
 
 (log/set-config! {:level :trace
@@ -147,6 +150,21 @@
       (async/close! grpc-out))
     (:body grpc-out)))
 
+;;-----------------------------------------------------------------------------
+;; "CloseDetect" service endpoint
+;;-----------------------------------------------------------------------------
+(def closedetect-ch (async/chan 1))
+
+(deftype CloseDetect []
+  closedetect.server/Service
+  (Subscribe
+    [_ {{:keys [id]} :grpc-params :keys [grpc-out close-ch] :as request}]
+    (go
+      (<! close-ch)
+      (>! closedetect-ch id)
+      (async/close! grpc-out))
+    (:body grpc-out)))
+
 (defn- greeter-mock-routes [interceptors]
   (pedestal.routes/->tablesyntax {:rpc-metadata greeter/rpc-metadata
                                   :interceptors interceptors
@@ -156,11 +174,18 @@
   (pedestal.routes/->tablesyntax {:rpc-metadata flowcontrol.server/rpc-metadata
                                   :interceptors interceptors
                                   :callback-context (FlowControl.)}))
+
+(defn- closedetect-mock-routes [interceptors]
+  (pedestal.routes/->tablesyntax {:rpc-metadata closedetect.server/rpc-metadata
+                                  :interceptors interceptors
+                                  :callback-context (CloseDetect.)}))
+
 (defn routes [interceptors]
   (concat
    (generic-mock-routes interceptors)
    (greeter-mock-routes interceptors)
-   (flowcontrol-mock-routes interceptors)))
+   (flowcontrol-mock-routes interceptors)
+   (closedetect-mock-routes interceptors)))
 
 ;;-----------------------------------------------------------------------------
 ;; Utilities
@@ -505,3 +530,14 @@
       (flowcontrol/StreamOut client {:count count :payload-size 1024} output)
       (Thread/sleep 5000)
       (is (= count (async/<!! (clojure.core.async/reduce (fn [c _] (inc c)) 0 output)))))))
+
+(deftest test-grpc-closedetect
+  (testing "Check that a streaming server can detect a client disconnect"
+    (let [output (async/chan 1)
+          client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env)) :input-buffer-size 128})
+          input (str (uuid/v4))]
+      (-> (closedetect/Subscribe client {:id input} output)
+          (p/catch (fn [ex])))
+      (Thread/sleep 1000)
+      (grpc/disconnect client)
+      (is (-> (<!! closedetect-ch) (= input))))))

@@ -32,6 +32,7 @@
                                   [clj-http "3.10.0"]
                                   [com.taoensso/timbre "4.10.0"]
                                   [org.clojure/data.codec "0.1.1"]
-                                  [org.clojure/data.generators "0.1.2"]]
+                                  [org.clojure/data.generators "0.1.2"]
+                                  [danlentz/clj-uuid "0.1.9"]]
                    :resource-paths ["test/resources"]}})
 
