@@ -25,7 +25,7 @@
            (java.io InputStream)
            (io.undertow.io Receiver$PartialBytesCallback Receiver$ErrorCallback)
            (java.nio ByteBuffer))
-  (:refer-clojure :exclude [resolve]))
+  (:refer-clojure :exclude [resolve flush]))
 
 (defn- assoc-header
   "Associates an undertow header entry as a <string, string> tuple in a map"
