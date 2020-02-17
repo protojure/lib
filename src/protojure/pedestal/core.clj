@@ -24,31 +24,34 @@
                              HttpString)
            (java.io InputStream)
            (io.undertow.io Receiver$PartialBytesCallback Receiver$ErrorCallback)
-           (java.nio ByteBuffer))
+           (java.nio ByteBuffer)
+           (org.xnio.channels StreamSinkChannel))
   (:refer-clojure :exclude [resolve flush]))
+
+(set! *warn-on-reflection* true)
 
 (defn- assoc-header
   "Associates an undertow header entry as a <string, string> tuple in a map"
-  [headers map key]
+  [^HeaderMap headers map ^HttpString key]
   (assoc map (string/lower-case key) (.get headers key 0)))
 
 (defn- get-request-headers
   "Create a map of request header elements"
-  [exchange]
+  [^HttpServerExchange exchange]
   (let [headers (.getRequestHeaders exchange)]
     (reduce (partial assoc-header headers) {} (.getHeaderNames headers))))
 
 (defn- write-trailers
   "Places the <string, string> tuples representing trailers to undertow with a putAttachment operation"
-  [exchange trailers]
+  [^HttpServerExchange exchange trailers]
   (let [data (HeaderMap.)]
     (doseq [[k v] trailers]
-      (.add data (HttpString. (name k)) v))
+      (.add data (HttpString. (name k)) (str v)))
     (.putAttachment exchange HttpAttachments/RESPONSE_TRAILERS data)))
 
 (defn- read-stream-chunk
   "Chunks reads from an input-stream, returning either a byte-array when data is found, or nil for EOF"
-  [stream requested-size]
+  [^InputStream stream requested-size]
   (let [buf (byte-array requested-size)
         actual-size (.read stream buf)]
     (cond
@@ -69,7 +72,7 @@
               (cons data (async-poll-seq ch)))))
 
 (defn- -write
-  [ch buf len]
+  [^StreamSinkChannel ch ^ByteBuffer buf len]
   (let [bytes-written (.write ch buf)
         bytes-remain (- len bytes-written)]
     (when-not (zero? bytes-remain)
@@ -78,22 +81,22 @@
 
 (defn- write-data
   "Writes the provided bytes to the undertow response channel"
-  [ch data]
+  [^StreamSinkChannel ch data]
   (-write ch (ByteBuffer/wrap data) (count data)))
 
 (defn- flush
-  [ch]
+  [^StreamSinkChannel ch]
   (while (not (.flush ch))))
 
 (defn- write-data-coll
   "Writes and flushes an entire collection"
-  [ch coll]
+  [^StreamSinkChannel ch coll]
   (run! (partial write-data ch) coll)
   (flush ch))
 
 (defn- write-direct-data
   "Used for trivial response bodies, such as String or byte types"
-  [ch data]
+  [^StreamSinkChannel ch data]
   (p/resolved
    (do
      (write-data ch data)
@@ -102,18 +105,18 @@
 (defn- write-streaming-data
   "Used for InputStream type response bodies.  Will chunk the data to avoid
   overburdening the heap"
-  [ch is]
+  [^StreamSinkChannel ch is]
   (p/resolved (write-data-coll ch (byte-chunk-seq is 65536))))
 
 (defn- write-available-async-data
   "Drains all remaining data from a core.async channel and flushes it to the response channel"
-  [output-ch input-ch]
+  [^StreamSinkChannel output-ch input-ch]
   (write-data-coll output-ch (async-poll-seq input-ch)))
 
 (defn- write-async-data
   "Used for core.async type response bodies.  Each message received is assumed
   to represent a data frame and thus will be flushed"
-  [output-ch input-ch]
+  [^StreamSinkChannel output-ch input-ch]
   (p/promise
    (fn [resolve reject]
      (write-available-async-data output-ch input-ch)
@@ -131,14 +134,14 @@
 
 (defn- open-output-channel
   "Opens the response channel and sets it up for asynchronous operation"
-  [exchange]
+  [^HttpServerExchange exchange]
   (let [output-ch (.getResponseChannel exchange)]
     (.resumeWrites output-ch)
     output-ch))
 
 (defn- close-output-channel
   "Flushes and closes the response channel"
-  [exchange ch]
+  [^HttpServerExchange exchange ^StreamSinkChannel ch]
   (.shutdownWrites ch)
   (loop []
     (if (.flush ch)
@@ -174,7 +177,7 @@
   [ch resp-body]
   (write-async-data ch resp-body))
 (defmethod transmit-body String
-  [ch resp-body]
+  [ch ^String resp-body]
   (write-direct-data ch (.getBytes resp-body)))
 (defmethod transmit-body InputStream
   [ch resp-body]
@@ -203,7 +206,7 @@
   [exchange trailers]
   (p/resolved (write-trailers exchange trailers)))
 
-(defn subscribe-close [exchange]
+(defn subscribe-close [^HttpServerExchange exchange]
   (let [conn (.getConnection exchange)
         ch (promise-chan)]
     (.addCloseListener conn
@@ -218,7 +221,7 @@
   "Our main handler - Every request arriving at the undertow endpoint
   filters through this function.  We decode it and then invoke our pedestal
   chain asynchronously"
-  [interceptors exchange]
+  [interceptors ^HttpServerExchange exchange]
   (let [input-ch         (chan 16384) ;; TODO this allocation likely needs adaptive tuning
         input-stream     (protojure.pedestal.io.InputStream. input-ch)
         input-status     (open-input-channel exchange input-ch)
@@ -251,7 +254,7 @@
   ;; Set Response Headers
   (let [ctx (.getResponseHeaders exchange)]
     (doseq [[k v] headers]
-      (.put ctx (HttpString. k) v)))
+      (.put ctx (HttpString. ^String k) ^String v)))
 
   ;; Start asynchronous output
   (let [output-ch (open-output-channel exchange)]

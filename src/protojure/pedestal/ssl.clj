@@ -5,10 +5,13 @@
 (ns protojure.pedestal.ssl
   (:require [clojure.java.io :as io])
   (:import (javax.net.ssl SSLContext KeyManagerFactory)
-           (java.security KeyStore)))
+           (java.security KeyStore)
+           (java.io InputStream)))
+
+(set! *warn-on-reflection* true)
 
 (defn- load-keystore
-  [keystore password]
+  [keystore ^String password]
   (if (instance? KeyStore keystore)
     keystore
     (with-open [in (io/input-stream keystore)]
@@ -17,7 +20,7 @@
 
 (defn- keystore->key-managers
   "Return a KeyManager[] given a KeyStore and password"
-  [keystore password]
+  [keystore ^String password]
   (.getKeyManagers
    (doto (KeyManagerFactory/getInstance (KeyManagerFactory/getDefaultAlgorithm))
      (.init keystore (.toCharArray password)))))

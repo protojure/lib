@@ -13,11 +13,13 @@
                                 ExtensionRegistry
                                 ByteString)))
 
+(set! *warn-on-reflection* true)
+
 (defmacro defparsefn [type]
   (let [name (symbol (str "cis->" type))
         sym (symbol (str "read" type))
         doc (format "Deserialize a '%s' type" type)]
-    `(defn ~name ~doc [is#]
+    `(defn ~name ~doc [^CodedInputStream is#]
        (. is# ~sym))))
 
 (defmacro defwritefn [type default?]
@@ -27,7 +29,7 @@
     `(defn ~name ~doc
        ([tag# value# os#]
         (~name tag# {} value# os#))
-       ([tag# options# value# os#]
+       ([tag# options# value# ^CodedOutputStream os#]
         (when-not (and (get options# :optimize true) (~default? value#))
           (. os# ~sym tag# value#))))))
 
@@ -59,21 +61,21 @@
 ;; manually implement the "Bytes" scalar so we can properly handle native byte-array import/export
 (defn cis->Bytes
   "Deserialize 'Bytes' type"
-  [is]
+  [^CodedInputStream is]
   (.toByteArray (.readBytes is)))
 
 (defn write-Bytes
   "Serialize 'Bytes' type"
   ([tag value os]
    (write-Bytes tag {} value os))
-  ([tag {:keys [optimize] :or {optimize true} :as options} value os]
+  ([tag {:keys [optimize] :or {optimize true} :as options} value ^CodedOutputStream os]
    (when-not (and optimize (empty? value))
-     (let [bytestring (ByteString/copyFrom value)]
+     (let [bytestring (ByteString/copyFrom (bytes value))]
        (.writeBytes os tag bytestring)))))
 
 (defn cis->undefined
   "Deserialize an unknown type, retaining its tag/type"
-  [tag is]
+  [tag ^CodedInputStream is]
   (let [num (WireFormat/getTagFieldNumber tag)
         type (WireFormat/getTagWireType tag)]
     (case type
@@ -86,8 +88,8 @@
 
 (defn cis->embedded
   "Deserialize an embedded type, where **f** is an (fn) that can deserialize the embedded message"
-  [f is]
-  (let [len (.readRawVarint32 ^CodedInputStream is)
+  [f ^CodedInputStream is]
+  (let [len (.readRawVarint32 is)
         lim (.pushLimit is len)]
     (let [result (f is)]
       (.popLimit is lim)
@@ -95,11 +97,11 @@
 
 (defn write-embedded
   "Serialize an embedded type along with tag/length metadata"
-  [tag item os]
+  [tag item ^CodedOutputStream os]
   (when (some? item)
-    (let [bytes (->pb item)
-          len (count bytes)]
+    (let [data (->pb item)
+          len (count data)]
       (when-not (zero? len)
         (.writeTag os tag 2);; embedded messages are always type=2 (string)
         (.writeUInt32NoTag os len)
-        (.writeRawBytes os bytes)))))
+        (.writeRawBytes os (bytes data))))))

@@ -9,6 +9,8 @@
             [clojure.core.async :as async])
   (:refer-clojure :exclude [take]))
 
+(set! *warn-on-reflection* true)
+
 (defn- take [ch]
   (p/promise
    (fn [resolve reject]

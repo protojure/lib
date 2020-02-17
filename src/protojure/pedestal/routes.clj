@@ -8,6 +8,8 @@
             [protojure.pedestal.interceptors.grpc-web :as grpc.web]
             [io.pedestal.interceptor.helpers :as pedestal]))
 
+(set! *warn-on-reflection* true)
+
 (defn ->tablesyntax
   "Generates routes in [Table Syntax](http://pedestal.io/reference/table-syntax) format"
   [{:keys [rpc-metadata interceptors callback-context] :as options}]
