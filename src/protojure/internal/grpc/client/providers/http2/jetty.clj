@@ -9,16 +9,23 @@
   (:import (java.net InetSocketAddress)
            (java.nio ByteBuffer)
            (org.eclipse.jetty.http2.client HTTP2Client)
-           (org.eclipse.jetty.http2.api Stream$Listener)
+           (org.eclipse.jetty.http2.api Stream$Listener
+                                        Stream
+                                        Session)
            (org.eclipse.jetty.http2.api.server ServerSessionListener$Adapter)
            (org.eclipse.jetty.http2.frames HeadersFrame
                                            DataFrame)
            (org.eclipse.jetty.util Promise Callback)
            (org.eclipse.jetty.http HttpFields
+                                   HttpField
                                    HttpURI
                                    HttpVersion
-                                   MetaData$Request))
+                                   MetaData$Request
+                                   MetaData$Response
+                                   MetaData))
   (:refer-clojure :exclude [resolve]))
+
+(set! *warn-on-reflection* true)
 
 ;;------------------------------------------------------------------------------------
 ;; Utility functions
@@ -57,10 +64,10 @@
 
 (defn- fields->
   "converts jetty HttpFields container to a [string string] map"
-  [fields]
+  [^HttpFields fields]
   (->> (.iterator fields)
        (iterator-seq)
-       (reduce (fn [acc x]
+       (reduce (fn [acc ^HttpField x]
                  (assoc acc (.getName x) (.getValue x))) {})))
 
 (defn- build-request
@@ -75,7 +82,7 @@
 (defn- close-all! [& channels]
   (run! (fn [ch] (when (some? ch) (async/close! ch))) channels))
 
-(defn- stream-log [sev stream & msg]
+(defn- stream-log [sev ^Stream stream & msg]
   (log/log sev (apply str (cons (str "STREAM " (.getId stream) ": ") msg))))
 
 (defn- receive-listener
@@ -84,24 +91,24 @@
   (let [end-stream! (fn [stream] (stream-log :trace stream "Closing") (close-all! meta-ch data-ch))]
     (reify Stream$Listener
       (onHeaders [_ stream frame]
-        (let [metadata (.getMetaData frame)
+        (let [^MetaData metadata (.getMetaData ^HeadersFrame frame)
               fields (fields-> (.getFields metadata))
               data (if (.isResponse metadata)
-                     (let [status (.getStatus metadata)
-                           reason (.getReason metadata)]
+                     (let [status (.getStatus ^MetaData$Response metadata)
+                           reason (.getReason ^MetaData$Response metadata)]
                        (-> {:headers fields}
                            (cond-> (some? status) (assoc :status status))
                            (cond-> (some? reason) (assoc :reason reason))))
                      {:trailers fields})
-              last? (.isEndStream frame)]
+              last? (.isEndStream ^HeadersFrame frame)]
           (stream-log :trace stream "Received HEADER-FRAME: " data " ENDFRAME=" last?)
           (>!! meta-ch data)
           (when last?
             (end-stream! stream))))
       (onData [_ stream frame callback]
-        (let [data (.getData frame)
+        (let [data (.getData ^DataFrame frame)
               len (.remaining data)
-              last? (.isEndStream frame)]
+              last? (.isEndStream ^DataFrame frame)]
           (stream-log :trace stream "Received DATA-FRAME (" len " bytes) ENDFRAME=" last?)
           (when (some? data-ch)
             (doseq [b (repeatedly len #(.get data))]
@@ -132,7 +139,7 @@
   "Transmits a single DATA frame"
   ([stream data]
    (transmit-data-frame stream data false 0))
-  ([stream data last? padding]
+  ([^Stream stream data last? padding]
    (stream-log :trace stream "Sending DATA-FRAME with " (count data) " bytes, ENDFRAME=" last?)
    @(jetty-callback-promise
      (fn [cb]
@@ -177,7 +184,7 @@
                     context))))))
 
 (defn send-request
-  [{:keys [session] :as context}
+  [{:keys [^Session session] :as context}
    {:keys [input-ch meta-ch output-ch] :as request}]
   (let [request-frame (build-request request (nil? input-ch))
         listener (receive-listener meta-ch output-ch)]
@@ -187,7 +194,7 @@
         (p/then (partial transmit-data-frames input-ch))
         (p/catch (fn [ex] (close-all! meta-ch output-ch) (throw ex))))))
 
-(defn disconnect [{:keys [client] :as context}]
+(defn disconnect [{:keys [^HTTP2Client client] :as context}]
   (log/debug "Disconnecting:" context)
   (.stop client)
   (dissoc context :client :session))

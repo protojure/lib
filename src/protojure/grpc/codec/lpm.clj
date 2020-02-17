@@ -8,12 +8,15 @@
             [promesa.core :as p]
             [protojure.protobuf :refer [->pb]]
             [protojure.grpc.codec.compression :as compression]
-            [clojure.tools.logging :as log])
+            [clojure.tools.logging :as log]
+            [clojure.java.io :as io])
   (:import (protojure.internal.grpc.io InputStream
                                        OutputStream)
            (java.io ByteArrayOutputStream)
            (org.apache.commons.io.input BoundedInputStream))
   (:refer-clojure :exclude [resolve]))
+
+(set! *warn-on-reflection* true)
 
 ;;--------------------------------------------------------------------------------------
 ;; integer serdes used for GRPC framing
@@ -151,10 +154,10 @@ The value for the **content-coding** option must be one of
 ;;--------------------------------------------------------------------------------------
 ;; Encoder
 ;;--------------------------------------------------------------------------------------
-(defn- encode-buffer [buf len compressed? os]
+(defn- encode-buffer [buf len compressed? ^OutputStream os]
   (.write os (int (if compressed? 1 0)))
-  (.write os (num->bytes len))
-  (.write os buf))
+  (.write os (bytes (num->bytes len)))
+  (.write os (bytes buf)))
 
 (defn- encode-uncompressed [msg os]
   (let [buf (->pb msg)
@@ -162,10 +165,9 @@ The value for the **content-coding** option must be one of
     (encode-buffer buf len false os)))
 
 (defn- compress-buffer [compressor buf]
-  (let [os (ByteArrayOutputStream.)
-        cos (compressor os)]
-    (.write cos buf)
-    (.close cos)
+  (let [os (ByteArrayOutputStream.)]
+    (with-open [cos (compressor os)]
+      (io/copy buf cos))
     (.toByteArray os)))
 
 (defn- encode-maybe-compressed

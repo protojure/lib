@@ -11,6 +11,8 @@
            (org.apache.commons.compress.compressors.deflate DeflateCompressorInputStream
                                                             DeflateCompressorOutputStream)))
 
+(set! *warn-on-reflection* true)
+
 ;;--------------------------------------------------------------------------------------
 ;; compression support
 ;;--------------------------------------------------------------------------------------

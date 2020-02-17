@@ -11,6 +11,8 @@
             [lambdaisland.uri :as lambdaisland]
             [clojure.tools.logging :as log]))
 
+(set! *warn-on-reflection* true)
+
 (defn connect
   "
 Connects the client to a [GRPC-HTTP2](https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md) compatible server

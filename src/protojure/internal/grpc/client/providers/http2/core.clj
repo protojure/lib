@@ -11,6 +11,8 @@
             [promesa.core :as p])
   (:refer-clojure :exclude [resolve]))
 
+(set! *warn-on-reflection* true)
+
 (defn- input-pipeline
   "'inputs' to the GRPC function, e.g. parameters, are LPM encoded in the request-body"
   [{:keys [f] :as input} codecs content-coding max-frame-size]

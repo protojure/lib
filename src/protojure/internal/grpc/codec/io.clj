@@ -4,7 +4,10 @@
 
 (ns protojure.internal.grpc.codec.io
   (:require [clojure.core.async :refer [<! >! <!! alt!! go go-loop] :as async]
-            [clojure.tools.logging :as log]))
+            [clojure.tools.logging :as log])
+  (:import (clojure.core.async.impl.channels ManyToManyChannel)))
+
+(set! *warn-on-reflection* true)
 
 (defn- take!-with-tmo [data-ch tmo]
   (if (some? tmo)
@@ -30,20 +33,20 @@
   [[] {:ch ch :tmo tmo}])
 
 (defn- is-available
-  [this]
+  [^protojure.internal.grpc.io.InputStream this]
   (let [{:keys [ch]} (.state this)]
-    (if-let [buf (.buf ch)]
+    (if-let [buf (.buf ^ManyToManyChannel ch)]
       (count buf)
       1)))                                                 ;; FIXME: estimate 1 byte if we can't tell?
 
 (defn- is-read
   "Reads the next byte of data from the input stream. The value byte is returned as an int in the range 0 to 255.
   See InputStream for further details."
-  ([this bytes offset len]
+  ([^protojure.internal.grpc.io.InputStream this bytes offset len]
    (.parentRead this bytes offset len))
-  ([this bytes]
+  ([^protojure.internal.grpc.io.InputStream this bytes]
    (.parentRead this bytes))
-  ([this]
+  ([^protojure.internal.grpc.io.InputStream this]
    (let [{:keys [ch tmo]} (.state this)]
      (if-let [b (take!-with-tmo ch tmo)]
        b
@@ -114,17 +117,17 @@
   "Sends a ':flush' signal to our framer when used in 'framed?=true' mode, NOP for streaming mode.
   N.B. The flush may or may not be result in an immediate write to the underlying sink since
   the framing layer may try to coalesce writes at its own discretion"
-  [this]
+  [^protojure.internal.grpc.io.OutputStream this]
   (let [{:keys [ch framed?]} (.state this)]
     (when framed?
       (async/>!! ch :flush))))
 
 (defn- os-close
-  [this]
+  [^protojure.internal.grpc.io.OutputStream this]
   (let [{:keys [ch]} (.state this)]
     (async/close! ch)))
 
 (defn- os-write-int
-  [this b]
+  [^protojure.internal.grpc.io.OutputStream this b]
   (let [{:keys [ch]} (.state this)]
     (async/>!! ch (bit-and b 0xFF))))

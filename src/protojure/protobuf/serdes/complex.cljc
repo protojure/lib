@@ -8,6 +8,8 @@
   (:require [protojure.protobuf.serdes.core :refer :all]
             [protojure.protobuf.serdes.stream :as stream]))
 
+(set! *warn-on-reflection* true)
+
 (defn cis->map
   "Deserialize a wire format map-type to user format [key val]"
   [f is]

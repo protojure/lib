@@ -8,6 +8,8 @@
   (:import (org.apache.commons.codec.binary Base64InputStream))
   (:refer-clojure :exclude [proxy]))
 
+(set! *warn-on-reflection* true)
+
 (defn- decode-body
   [{:keys [body] :as request}]
   (assoc request :body (Base64InputStream. body)))

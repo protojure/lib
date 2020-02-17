@@ -10,6 +10,8 @@
             [io.pedestal.interceptor :as pedestal]
             [io.pedestal.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (def ^{:const true :no-doc true} supported-encodings (set (keys protojure.grpc.codec.compression/builtin-codecs)))
 
 (defn- determine-output-encoding
