@@ -148,7 +148,7 @@
       (dotimes [i count]
         (>! grpc-out {:id i :data (byte-array (repeatedly payload-size gen/byte))}))
       (async/close! grpc-out))
-    (:body grpc-out)))
+    {:body grpc-out}))
 
 ;;-----------------------------------------------------------------------------
 ;; "CloseDetect" service endpoint
