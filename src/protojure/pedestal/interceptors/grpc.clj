@@ -70,13 +70,22 @@
   "<leave> interceptor for handling GRPC responses"
   [{:keys [server-streaming] :as rpc-metadata}
    {{:keys [body] :as response} :response {:keys [req-ctx resp-ctx]} ::ctx :as context}]
-  ;; special-case unary return types
-  (when-not server-streaming
-    (let [output-ch (:in resp-ctx)]
-      (when (some? body) (async/>!! output-ch body))
-      (async/close! output-ch)))
 
-  (let [trailers-ch (async/promise-chan)]
+  (let [trailers-ch (async/promise-chan)
+        output-ch (:in resp-ctx)]
+
+    (cond
+      ;; special-case unary return types
+      (not server-streaming)
+      (do
+        (when (some? body) (async/>!! output-ch body))
+        (async/close! output-ch))
+
+      ;; Auto-close the output ch if the user does not signify they have consumed it
+      ;; by referencing it in the :body
+      (not= output-ch body)
+      (async/close! output-ch))
+
     ;; defer sending trailers until our IO has completed
     (-> (p/all (mapv :status [req-ctx resp-ctx]))
         (p/then (fn [_] (async/>!! trailers-ch (generate-trailers response))))
