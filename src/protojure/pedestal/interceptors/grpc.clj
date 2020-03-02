@@ -6,8 +6,10 @@
   "A [Pedestal](http://pedestal.io/) [interceptor](http://pedestal.io/reference/interceptors) for [GRPC](https://grpc.io/) support"
   (:require [clojure.core.async :refer [go >! <!] :as async]
             [protojure.grpc.codec.lpm :as lpm]
+            [protojure.grpc.status :as status]
             [promesa.core :as p]
             [io.pedestal.interceptor :as pedestal]
+            [io.pedestal.interceptor.error :as err]
             [io.pedestal.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -38,10 +40,12 @@
   [f {{:strs [grpc-accept-encoding] :or {grpc-accept-encoding ""}} :headers :as req}]
   (let [in (async/chan 128)
         out (async/chan 128)
+        trailers-ch (async/promise-chan)
         encoding (or (determine-output-encoding grpc-accept-encoding) "identity")]
     {:in       in
      :out      out
      :encoding encoding
+     :trailers-ch trailers-ch
      :status   (lpm/encode f in out {:content-coding encoding :max-frame-size 16383})}))
 
 (defn- set-params [context params]
@@ -71,8 +75,7 @@
   [{:keys [server-streaming] :as rpc-metadata}
    {{:keys [body] :as response} :response {:keys [req-ctx resp-ctx]} ::ctx :as context}]
 
-  (let [trailers-ch (async/promise-chan)
-        output-ch (:in resp-ctx)]
+  (let [output-ch (:in resp-ctx)]
 
     (cond
       ;; special-case unary return types
@@ -88,21 +91,34 @@
 
     ;; defer sending trailers until our IO has completed
     (-> (p/all (mapv :status [req-ctx resp-ctx]))
-        (p/then (fn [_] (async/>!! trailers-ch (generate-trailers response))))
+        (p/then (fn [_] (async/>!! (:trailers-ch resp-ctx) (generate-trailers response))))
         (p/catch (fn [ex]
                    (log/error "Pipeline error: " ex)
-                   (async/>!! trailers-ch (generate-trailers {:grpc-status 13})))))
+                   (status/error :internal))))
 
     (update context :response
             #(assoc %
                     :headers  {"Content-Type" "application/grpc+proto"
                                "grpc-encoding" (:encoding resp-ctx)}
-                    :status   200
+                    :status   200                ;; always return 200
                     :body     (:out resp-ctx)
-                    :trailers trailers-ch))))
+                    :trailers (:trailers-ch resp-ctx)))))
 
-(defn interceptor
+(defn route-interceptor
   [rpc-metadata]
   (pedestal/interceptor {:name ::interceptor
                          :enter (partial grpc-enter rpc-metadata)
                          :leave (partial grpc-leave rpc-metadata)}))
+
+(def error-interceptor
+  (err/error-dispatch
+   [ctx ex]
+
+   [{:exception-type ::status/error}]
+   (let [{:keys [type desc]} (ex-data ex)
+         {{{:keys [trailers-ch]} :resp-ctx} ::ctx} ctx]
+     (async/>!! trailers-ch (generate-trailers {:grpc-status type :grpc-message desc}))
+     (assoc-in ctx [:response :status] 200))
+
+   :else
+   (assoc ctx :io.pedestal.interceptor.chain/error ex)))
