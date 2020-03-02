@@ -20,6 +20,7 @@
             [protojure.grpc.client.providers.http2 :as grpc.http2]
             [protojure.internal.grpc.client.providers.http2.jetty :as jetty-client]
             [protojure.grpc.client.utils :as client.utils]
+            [protojure.grpc.status :as grpc.status]
             [protojure.test.utils :as test.utils :refer [data-equal?]]
             [example.types :as example]
             [example.hello :refer [new-HelloRequest pb->HelloRequest new-HelloReply pb->HelloReply]]
@@ -133,9 +134,7 @@
      :body "This isn't a protobuf message"})
   (SayNil
     [this req]
-    {:body        nil
-     :grpc-status 7
-     :grpc-message "UNAUTHENTICATED"}))
+    (grpc.status/error :unauthenticated)))
 
 ;;-----------------------------------------------------------------------------
 ;; "FlowControl" service endpoint

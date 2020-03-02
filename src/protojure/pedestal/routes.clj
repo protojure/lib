@@ -10,6 +10,11 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- consv
+  "identical to (cons), except returns a vector"
+  [& args]
+  (vec (apply cons args)))
+
 (defn ->tablesyntax
   "Generates routes in [Table Syntax](http://pedestal.io/reference/table-syntax) format"
   [{:keys [rpc-metadata interceptors callback-context] :as options}]
@@ -18,5 +23,8 @@
           name (keyword fqs (str method "-handler"))
           handler (pedestal/handler name (partial method-fn callback-context))]
       [(str "/" fqs "/" method)
-       :post (conj interceptors grpc.web/proxy (grpc/interceptor rpc) handler)
+       :post (-> (consv grpc/error-interceptor interceptors)
+                 (conj grpc.web/proxy
+                       (grpc/route-interceptor rpc)
+                       handler))
        :route-name name])))
