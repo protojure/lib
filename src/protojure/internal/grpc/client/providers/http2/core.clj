@@ -1,4 +1,5 @@
 ;; Copyright © 2019 State Street Bank and Trust Company.  All rights reserved
+;; Copyright © 2020 Manetu, Inc.  All rights reserved
 ;;
 ;; SPDX-License-Identifier: Apache-2.0
 
@@ -27,12 +28,12 @@
 
 (defn- send-request
   "Sends an HTTP2 based POST request that adheres to the GRPC-HTTP2 specification"
-  [context uri codecs content-coding {:keys [metadata service method options] :as params} input-ch meta-ch output-ch]
+  [context uri codecs content-coding conn-metadata {:keys [metadata service method options] :as params} input-ch meta-ch output-ch]
   (log/trace (str "Invoking GRPC \""  service "/" method "\""))
   (let [hdrs (-> {"content-type" "application/grpc+proto"
                   "grpc-encoding" (or content-coding "identity")
                   "grpc-accept-encoding" (codecs-to-accept codecs)}
-                 (merge metadata))
+                 (merge conn-metadata metadata))
         url (str uri "/" service "/" method)]
     (jetty/send-request context {:method    "POST"
                                  :url       url
@@ -114,14 +115,14 @@
 ;;-----------------------------------------------------------------------------
 ;; Provider
 ;;-----------------------------------------------------------------------------
-(deftype Http2Provider [context uri codecs content-coding max-frame-size input-buffer-size]
+(deftype Http2Provider [context uri codecs content-coding max-frame-size input-buffer-size metadata]
   api/Provider
 
   (invoke [_ {:keys [input output] :as params}]
     (let [input-ch (input-pipeline input codecs content-coding max-frame-size)
           meta-ch (async/chan 32)
           output-ch (when (some? output) (async/chan input-buffer-size))]
-      (-> (send-request context uri codecs content-coding params input-ch meta-ch output-ch)
+      (-> (send-request context uri codecs content-coding metadata params input-ch meta-ch output-ch)
           (p/then (partial receive-headers meta-ch))
           (p/then (partial receive-payload codecs meta-ch output-ch output))
           (p/then (fn [status]
