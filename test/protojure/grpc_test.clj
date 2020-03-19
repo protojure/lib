@@ -1,4 +1,5 @@
 ;; Copyright © 2019 State Street Bank and Trust Company.  All rights reserved
+;; Copyright © 2020 Manetu, Inc.  All rights reserved
 ;;
 ;; SPDX-License-Identifier: Apache-2.0
 
@@ -28,7 +29,9 @@
             [protojure.test.flowcontrol.FlowControl.server :as flowcontrol.server]
             [protojure.test.flowcontrol.FlowControl.client :as flowcontrol]
             [protojure.test.closedetect.CloseDetect.server :as closedetect.server]
-            [protojure.test.closedetect.CloseDetect.client :as closedetect])
+            [protojure.test.closedetect.CloseDetect.client :as closedetect]
+            [protojure.test.metadata.Metadata.server :as metadata.server]
+            [protojure.test.metadata.Metadata.client :as metadata.client])
   (:refer-clojure :exclude [resolve]))
 
 (log/set-config! {:level :trace
@@ -164,6 +167,16 @@
       (async/close! grpc-out))
     (:body grpc-out)))
 
+;;-----------------------------------------------------------------------------
+;; "Metadata" service endpoint
+;;-----------------------------------------------------------------------------
+(deftype Metadata []
+  metadata.server/Service
+  (HelloAuth
+    [_ request]
+    (let [auth (get-in request [:headers "authorization"])]
+      {:body {:msg (str "Hello, " auth)}})))
+
 (defn- greeter-mock-routes [interceptors]
   (pedestal.routes/->tablesyntax {:rpc-metadata greeter/rpc-metadata
                                   :interceptors interceptors
@@ -179,12 +192,18 @@
                                   :interceptors interceptors
                                   :callback-context (CloseDetect.)}))
 
+(defn- metadata-mock-routes [interceptors]
+  (pedestal.routes/->tablesyntax {:rpc-metadata metadata.server/rpc-metadata
+                                  :interceptors interceptors
+                                  :callback-context (Metadata.)}))
+
 (defn routes [interceptors]
   (concat
    (generic-mock-routes interceptors)
    (greeter-mock-routes interceptors)
    (flowcontrol-mock-routes interceptors)
-   (closedetect-mock-routes interceptors)))
+   (closedetect-mock-routes interceptors)
+   (metadata-mock-routes interceptors)))
 
 ;;-----------------------------------------------------------------------------
 ;; Utilities
@@ -540,3 +559,9 @@
       (Thread/sleep 1000)
       (grpc/disconnect client)
       (is (-> (<!! closedetect-ch) (= input))))))
+
+(deftest test-grpc-metadata
+  (testing "Check that connection-metadata is sent to the server"
+    (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env)) :metadata {"authorization" "Magic"}})]
+      (is (-> @(metadata.client/HelloAuth client {}) :msg (= "Hello, Magic")))
+      (grpc/disconnect client))))
