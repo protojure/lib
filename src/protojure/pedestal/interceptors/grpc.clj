@@ -10,7 +10,8 @@
             [promesa.core :as p]
             [io.pedestal.interceptor :as pedestal]
             [io.pedestal.interceptor.error :as err]
-            [io.pedestal.log :as log]))
+            [io.pedestal.log :as log]
+            [protojure.grpc.status :as grpc.status]))
 
 (set! *warn-on-reflection* true)
 
@@ -110,15 +111,20 @@
                          :enter (partial grpc-enter rpc-metadata)
                          :leave (partial grpc-leave rpc-metadata)}))
 
+(defn- err-status
+  [ctx status msg]
+  (update ctx :response
+          #(assoc %
+                  :status   200                ;; always return 200
+                  :trailers (generate-trailers {:grpc-status status :grpc-message msg}))))
+
 (def error-interceptor
   (err/error-dispatch
    [ctx ex]
 
    [{:exception-type ::status/error}]
-   (let [{:keys [type desc]} (ex-data ex)
-         {{{:keys [trailers-ch]} :resp-ctx} ::ctx} ctx]
-     (async/>!! trailers-ch (generate-trailers {:grpc-status type :grpc-message desc}))
-     (assoc-in ctx [:response :status] 200))
+   (let [{:keys [type desc]} (ex-data ex)]
+     (err-status ctx type desc))
 
    :else
-   (assoc ctx :io.pedestal.interceptor.chain/error ex)))
+   (err-status ctx (grpc.status/get-code :internal) (ex-message ex))))
