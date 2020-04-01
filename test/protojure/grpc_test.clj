@@ -161,7 +161,11 @@
   (Metadata
     [_ request]
     (let [auth (get-in request [:headers "authorization"])]
-      {:body {:msg (str "Hello, " auth)}})))
+      {:body {:msg (str "Hello, " auth)}}))
+
+  (ShouldThrow
+    [_ request]
+    (throw (ex-info "This is supposed to fail" {}))))
 
 (defn- greeter-mock-routes [interceptors]
   (pedestal.routes/->tablesyntax {:rpc-metadata greeter/rpc-metadata
@@ -538,4 +542,16 @@
   (testing "Check that connection-metadata is sent to the server"
     (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env)) :metadata {"authorization" "Magic"}})]
       (is (-> @(test.client/Metadata client {}) :msg (= "Hello, Magic")))
+      (grpc/disconnect client))))
+
+(deftest test-grpc-exception
+  (testing "Check that exceptions thrown on the server propagate back to the client"
+    (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
+      (is (thrown? java.util.concurrent.ExecutionException
+                   @(test.client/ShouldThrow client {})))
+      (try
+        @(test.client/ShouldThrow client {})
+        (catch java.util.concurrent.ExecutionException e
+          (let [{:keys [status]} (ex-data (.getCause e))]
+            (is (= status 13)))))
       (grpc/disconnect client))))

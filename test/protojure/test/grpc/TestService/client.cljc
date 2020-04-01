@@ -46,3 +46,14 @@
     (-> (send-unary-params input params)
         (p/then (fn [_] (invoke-unary client desc output))))))
 
+(defn ShouldThrow
+  [client params]
+  (let [input (async/chan 1)
+        output (async/chan 1)
+        desc {:service "protojure.test.grpc.TestService"
+              :method  "ShouldThrow"
+              :input   {:f com.google.protobuf/new-Empty :ch input}
+              :output  {:f com.google.protobuf/pb->Empty :ch output}}]
+    (-> (send-unary-params input params)
+        (p/then (fn [_] (invoke-unary client desc output))))))
+

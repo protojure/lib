@@ -28,5 +28,6 @@ service TestService {
     rpc CloseDetect (CloseDetectRequest) returns (stream google.protobuf.Any);
     rpc FlowControl (FlowControlRequest) returns (stream FlowControlPayload);
     rpc Metadata (google.protobuf.Empty) returns (MetadataResponse);
+    rpc ShouldThrow(google.protobuf.Empty) returns (google.protobuf.Empty);
 }
 

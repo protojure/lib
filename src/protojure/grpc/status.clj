@@ -29,7 +29,13 @@
 
 (def default-error (get codes :unknown))
 
+(defn get-desc [type]
+  (get codes type default-error))
+
+(defn get-code [type]
+  (:code (get-desc type)))
+
 (defn error [type]
-  (let [desc (get codes type default-error)]
+  (let [desc (get-desc type)]
     (when-not (= type :ok)
       (throw (ex-info "grpc error" (merge desc {:exception-type ::error}))))))
