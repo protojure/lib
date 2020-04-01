@@ -123,8 +123,8 @@
    [ctx ex]
 
    [{:exception-type ::status/error}]
-   (let [{:keys [type desc]} (ex-data ex)]
-     (err-status ctx type desc))
+   (let [{:keys [code msg]} (ex-data ex)]
+     (err-status ctx code msg))
 
    :else
    (err-status ctx (grpc.status/get-code :internal) (ex-message ex))))

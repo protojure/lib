@@ -24,7 +24,7 @@
    [16  :unauthenticated      "The request does not have valid authentication credentials."]])
 
 (def codes
-  (->> (map (fn [[code type desc]] {:code code :type type :desc desc}) -codes)
+  (->> (map (fn [[code type msg]] {:code code :type type :msg msg}) -codes)
        (reduce (fn [acc {:keys [type] :as v}] (assoc acc type v)) {})))
 
 (def default-error (get codes :unknown))
@@ -35,7 +35,15 @@
 (defn get-code [type]
   (:code (get-desc type)))
 
-(defn error [type]
-  (let [desc (get-desc type)]
-    (when-not (= type :ok)
-      (throw (ex-info "grpc error" (merge desc {:exception-type ::error}))))))
+(defn- -error
+  [{:keys [type code msg]}]
+  (when-not (= type :ok)
+    (throw (ex-info "grpc error" {:code code :msg msg :exception-type ::error}))))
+
+(defn error
+  ([type]
+   (-error (get-desc type)))
+  ([type msg]
+   (-> (get-desc type)
+       (assoc :msg msg)
+       (-error))))
