@@ -1,0 +1,32 @@
+syntax = "proto3";
+package protojure.test.grpc;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/empty.proto";
+
+message CloseDetectRequest {
+    string id = 1;
+}
+
+message FlowControlRequest {
+    int32 count = 1;
+    int32 payload_size = 2;
+
+}
+
+message FlowControlPayload {
+    int32 id = 1;
+    bytes data = 2;
+}
+
+message MetadataResponse {
+    string msg = 1;
+}
+
+
+service TestService {
+    rpc CloseDetect (CloseDetectRequest) returns (stream google.protobuf.Any);
+    rpc FlowControl (FlowControlRequest) returns (stream FlowControlPayload);
+    rpc Metadata (google.protobuf.Empty) returns (MetadataResponse);
+}
+

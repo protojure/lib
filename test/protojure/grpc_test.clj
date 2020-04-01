@@ -26,12 +26,8 @@
             [example.types :as example]
             [example.hello :refer [new-HelloRequest pb->HelloRequest new-HelloReply pb->HelloReply]]
             [example.hello.Greeter :as greeter]
-            [protojure.test.flowcontrol.FlowControl.server :as flowcontrol.server]
-            [protojure.test.flowcontrol.FlowControl.client :as flowcontrol]
-            [protojure.test.closedetect.CloseDetect.server :as closedetect.server]
-            [protojure.test.closedetect.CloseDetect.client :as closedetect]
-            [protojure.test.metadata.Metadata.server :as metadata.server]
-            [protojure.test.metadata.Metadata.client :as metadata.client])
+            [protojure.test.grpc.TestService.server :as test.server]
+            [protojure.test.grpc.TestService.client :as test.client])
   (:refer-clojure :exclude [resolve]))
 
 (log/set-config! {:level :trace
@@ -47,6 +43,8 @@
 
 (def test-trailers {"foo" "baz"
                     "bar" "bat"})
+
+(def closedetect-ch (async/chan 1))
 
 ;;-----------------------------------------------------------------------------
 ;; Mock endpoint
@@ -140,39 +138,27 @@
     (grpc.status/error :unauthenticated)))
 
 ;;-----------------------------------------------------------------------------
-;; "FlowControl" service endpoint
+;; TestService service endpoint
 ;;-----------------------------------------------------------------------------
-(deftype FlowControl []
-  flowcontrol.server/Service
-  (StreamOut
+(deftype TestService []
+  test.server/Service
+  (FlowControl
     [_ {{:keys [count payload-size]} :grpc-params :keys [grpc-out] :as request}]
     (go
       (dotimes [i count]
         (>! grpc-out {:id i :data (byte-array (repeatedly payload-size gen/byte))}))
       (async/close! grpc-out))
-    {:body grpc-out}))
+    {:body grpc-out})
 
-;;-----------------------------------------------------------------------------
-;; "CloseDetect" service endpoint
-;;-----------------------------------------------------------------------------
-(def closedetect-ch (async/chan 1))
-
-(deftype CloseDetect []
-  closedetect.server/Service
-  (Subscribe
+  (CloseDetect
     [_ {{:keys [id]} :grpc-params :keys [grpc-out close-ch] :as request}]
     (go
       (<! close-ch)
       (>! closedetect-ch id)
       (async/close! grpc-out))
-    (:body grpc-out)))
+    (:body grpc-out))
 
-;;-----------------------------------------------------------------------------
-;; "Metadata" service endpoint
-;;-----------------------------------------------------------------------------
-(deftype Metadata []
-  metadata.server/Service
-  (HelloAuth
+  (Metadata
     [_ request]
     (let [auth (get-in request [:headers "authorization"])]
       {:body {:msg (str "Hello, " auth)}})))
@@ -182,28 +168,16 @@
                                   :interceptors interceptors
                                   :callback-context (Greeter.)}))
 
-(defn- flowcontrol-mock-routes [interceptors]
-  (pedestal.routes/->tablesyntax {:rpc-metadata flowcontrol.server/rpc-metadata
+(defn- testservice-mock-routes [interceptors]
+  (pedestal.routes/->tablesyntax {:rpc-metadata test.server/rpc-metadata
                                   :interceptors interceptors
-                                  :callback-context (FlowControl.)}))
-
-(defn- closedetect-mock-routes [interceptors]
-  (pedestal.routes/->tablesyntax {:rpc-metadata closedetect.server/rpc-metadata
-                                  :interceptors interceptors
-                                  :callback-context (CloseDetect.)}))
-
-(defn- metadata-mock-routes [interceptors]
-  (pedestal.routes/->tablesyntax {:rpc-metadata metadata.server/rpc-metadata
-                                  :interceptors interceptors
-                                  :callback-context (Metadata.)}))
+                                  :callback-context (TestService.)}))
 
 (defn routes [interceptors]
   (concat
    (generic-mock-routes interceptors)
    (greeter-mock-routes interceptors)
-   (flowcontrol-mock-routes interceptors)
-   (closedetect-mock-routes interceptors)
-   (metadata-mock-routes interceptors)))
+   (testservice-mock-routes interceptors)))
 
 ;;-----------------------------------------------------------------------------
 ;; Utilities
@@ -545,7 +519,7 @@
     (let [output (async/chan 1)
           client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env)) :input-buffer-size 128})
           count 1024]
-      (flowcontrol/StreamOut client {:count count :payload-size 1024} output)
+      (test.client/FlowControl client {:count count :payload-size 1024} output)
       (Thread/sleep 5000)
       (is (= count (async/<!! (clojure.core.async/reduce (fn [c _] (inc c)) 0 output)))))))
 
@@ -554,7 +528,7 @@
     (let [output (async/chan 1)
           client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env)) :input-buffer-size 128})
           input (str (uuid/v4))]
-      (-> (closedetect/Subscribe client {:id input} output)
+      (-> (test.client/CloseDetect client {:id input} output)
           (p/catch (fn [ex])))
       (Thread/sleep 1000)
       (grpc/disconnect client)
@@ -563,5 +537,5 @@
 (deftest test-grpc-metadata
   (testing "Check that connection-metadata is sent to the server"
     (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env)) :metadata {"authorization" "Magic"}})]
-      (is (-> @(metadata.client/HelloAuth client {}) :msg (= "Hello, Magic")))
+      (is (-> @(test.client/Metadata client {}) :msg (= "Hello, Magic")))
       (grpc/disconnect client))))
