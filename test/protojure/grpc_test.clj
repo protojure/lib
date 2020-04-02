@@ -165,7 +165,11 @@
 
   (ShouldThrow
     [_ request]
-    (throw (ex-info "This is supposed to fail" {}))))
+    (throw (ex-info "This is supposed to fail" {})))
+
+  (Async
+    [_ request]
+    (go {:body {:msg "Hello, Async"}})))
 
 (defn- greeter-mock-routes [interceptors]
   (pedestal.routes/->tablesyntax {:rpc-metadata greeter/rpc-metadata
@@ -554,4 +558,10 @@
         (catch java.util.concurrent.ExecutionException e
           (let [{:keys [status]} (ex-data (.getCause e))]
             (is (= status 13)))))
+      (grpc/disconnect client))))
+
+(deftest test-grpc-async
+  (testing "Check that async processing functions correctly"
+    (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
+      (is (-> @(test.client/Async client {}) :msg (= "Hello, Async")))
       (grpc/disconnect client))))

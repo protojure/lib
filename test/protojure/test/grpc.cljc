@@ -28,9 +28,9 @@
 (declare cis->FlowControlPayload)
 (declare ecis->FlowControlPayload)
 (declare new-FlowControlPayload)
-(declare cis->MetadataResponse)
-(declare ecis->MetadataResponse)
-(declare new-MetadataResponse)
+(declare cis->SimpleResponse)
+(declare ecis->SimpleResponse)
+(declare new-SimpleResponse)
 
 
 ;;----------------------------------------------------------------------------------
@@ -190,50 +190,50 @@
 (def ^:protojure.protobuf.any/record FlowControlPayload-meta {:type "protojure.test.grpc.FlowControlPayload" :decoder pb->FlowControlPayload})
 
 ;-----------------------------------------------------------------------------
-; MetadataResponse
+; SimpleResponse
 ;-----------------------------------------------------------------------------
-(defrecord MetadataResponse-record [msg]
+(defrecord SimpleResponse-record [msg]
   pb/Writer
   (serialize [this os]
     (serdes.core/write-String 1  {:optimize true} (:msg this) os))
   pb/TypeReflection
   (gettype [this]
-    "protojure.test.grpc.MetadataResponse"))
+    "protojure.test.grpc.SimpleResponse"))
 
-(s/def :protojure.test.grpc.MetadataResponse/msg string?)
-(s/def ::MetadataResponse-spec (s/keys :opt-un [:protojure.test.grpc.MetadataResponse/msg ]))
-(def MetadataResponse-defaults {:msg "" })
+(s/def :protojure.test.grpc.SimpleResponse/msg string?)
+(s/def ::SimpleResponse-spec (s/keys :opt-un [:protojure.test.grpc.SimpleResponse/msg ]))
+(def SimpleResponse-defaults {:msg "" })
 
-(defn cis->MetadataResponse
-  "CodedInputStream to MetadataResponse"
+(defn cis->SimpleResponse
+  "CodedInputStream to SimpleResponse"
   [is]
-  (->> (tag-map MetadataResponse-defaults
+  (->> (tag-map SimpleResponse-defaults
          (fn [tag index]
              (case index
                1 [:msg (serdes.core/cis->String is)]
 
                [index (serdes.core/cis->undefined tag is)]))
          is)
-        (map->MetadataResponse-record)))
+        (map->SimpleResponse-record)))
 
-(defn ecis->MetadataResponse
-  "Embedded CodedInputStream to MetadataResponse"
+(defn ecis->SimpleResponse
+  "Embedded CodedInputStream to SimpleResponse"
   [is]
-  (serdes.core/cis->embedded cis->MetadataResponse is))
+  (serdes.core/cis->embedded cis->SimpleResponse is))
 
-(defn new-MetadataResponse
-  "Creates a new instance from a map, similar to map->MetadataResponse except that
+(defn new-SimpleResponse
+  "Creates a new instance from a map, similar to map->SimpleResponse except that
   it properly accounts for nested messages, when applicable.
   "
   [init]
-  {:pre [(if (s/valid? ::MetadataResponse-spec init) true (throw (ex-info "Invalid input" (s/explain-data ::MetadataResponse-spec init))))]}
-  (-> (merge MetadataResponse-defaults init)
-      (map->MetadataResponse-record)))
+  {:pre [(if (s/valid? ::SimpleResponse-spec init) true (throw (ex-info "Invalid input" (s/explain-data ::SimpleResponse-spec init))))]}
+  (-> (merge SimpleResponse-defaults init)
+      (map->SimpleResponse-record)))
 
-(defn pb->MetadataResponse
-  "Protobuf to MetadataResponse"
+(defn pb->SimpleResponse
+  "Protobuf to SimpleResponse"
   [input]
-  (cis->MetadataResponse (serdes.stream/new-cis input)))
+  (cis->SimpleResponse (serdes.stream/new-cis input)))
 
-(def ^:protojure.protobuf.any/record MetadataResponse-meta {:type "protojure.test.grpc.MetadataResponse" :decoder pb->MetadataResponse})
+(def ^:protojure.protobuf.any/record SimpleResponse-meta {:type "protojure.test.grpc.SimpleResponse" :decoder pb->SimpleResponse})
 

@@ -6,7 +6,8 @@
   "Utilities for generating GRPC endpoints as [Pedestal Routes](http://pedestal.io/guides/defining-routes)"
   (:require [protojure.pedestal.interceptors.grpc :as grpc]
             [protojure.pedestal.interceptors.grpc-web :as grpc.web]
-            [io.pedestal.interceptor.helpers :as pedestal]))
+            [io.pedestal.interceptor :as pedestal]
+            [clojure.core.async :refer [<! go]]))
 
 (set! *warn-on-reflection* true)
 
@@ -15,13 +16,25 @@
   [& args]
   (vec (apply cons args)))
 
+(defn- channel? [c] (instance? clojure.core.async.impl.protocols.Channel c))
+
+(defn- handler
+  [name f]
+  (pedestal/interceptor
+   {:name name
+    :enter (fn [context]
+             (let [response (f (:request context))]
+               (if (channel? response)
+                 (go (assoc context :response (<! response)))
+                 (assoc context :response response))))}))
+
 (defn ->tablesyntax
   "Generates routes in [Table Syntax](http://pedestal.io/reference/table-syntax) format"
   [{:keys [rpc-metadata interceptors callback-context] :as options}]
   (for [{:keys [pkg service method method-fn] :as rpc} rpc-metadata]
     (let [fqs (str pkg "." service)
           name (keyword fqs (str method "-handler"))
-          handler (pedestal/handler name (partial method-fn callback-context))]
+          handler (handler name (partial method-fn callback-context))]
       [(str "/" fqs "/" method)
        :post (-> (consv grpc/error-interceptor interceptors)
                  (conj grpc.web/proxy

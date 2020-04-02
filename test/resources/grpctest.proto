@@ -19,15 +19,14 @@ message FlowControlPayload {
     bytes data = 2;
 }
 
-message MetadataResponse {
+message SimpleResponse {
     string msg = 1;
 }
-
 
 service TestService {
     rpc CloseDetect (CloseDetectRequest) returns (stream google.protobuf.Any);
     rpc FlowControl (FlowControlRequest) returns (stream FlowControlPayload);
-    rpc Metadata (google.protobuf.Empty) returns (MetadataResponse);
-    rpc ShouldThrow(google.protobuf.Empty) returns (google.protobuf.Empty);
+    rpc Metadata (google.protobuf.Empty) returns (SimpleResponse);
+    rpc ShouldThrow (google.protobuf.Empty) returns (google.protobuf.Empty);
+    rpc Async (google.protobuf.Empty) returns (SimpleResponse);
 }
-
