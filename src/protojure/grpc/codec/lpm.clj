@@ -157,7 +157,8 @@ The value for the **content-coding** option must be one of
 (defn- encode-buffer [buf len compressed? ^OutputStream os]
   (.write os (int (if compressed? 1 0)))
   (.write os (bytes (num->bytes len)))
-  (.write os (bytes buf)))
+  (when (pos? len)
+    (.write os (bytes buf))))
 
 (defn- encode-uncompressed [msg os]
   (let [buf (->pb msg)

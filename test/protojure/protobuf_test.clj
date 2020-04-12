@@ -13,6 +13,7 @@
             [protojure.grpc.codec.lpm :as lpm]
             [protojure.grpc.codec.compression :as compression]
             [protojure.test.utils :refer [data-equal?]]
+            [com.google.protobuf :as google]
             [promesa.core :as p]
             [example.types :as example]
             [com.example.addressbook :as addressbook])
@@ -87,6 +88,12 @@
   "Create an range of 'n' contiguous values from 'input'"
   [n input]
   (take n (iterate inc input)))
+
+(defn async-seq
+  "Returns a lazy sequence of items available on a core.async channel"
+  [ch]
+  (lazy-seq (when-some [data (async/<!! ch)]
+              (cons data (async-seq ch)))))
 
 ;;-----------------------------------------------------------------------------
 ;; Test data
@@ -268,6 +275,19 @@
     (let [codecs [nil "identity" "gzip" "deflate" "snappy" "mycustom"]]
       (run! (partial validate-lpm long-test-msg) codecs)
       (run! (partial validate-lpm test-msg) codecs))))
+
+(deftest grpc-lpm-empty-test
+  (testing "Verify that we encode an Empty message properly"
+    (let [input (async/chan 64)
+          output (async/chan 16384)
+          task (lpm/encode google/new-Empty input output {})]
+
+      (>!! input {})
+      (async/close! input)
+      @task
+      (let [result (async-seq output)]
+        (is (= 5 (count result)))
+        (is (every? zero? result))))))
 
 (deftest grpc-timeout-test
   (testing "Verify that we correctly timeout on a stalled decode"

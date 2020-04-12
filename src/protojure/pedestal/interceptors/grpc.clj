@@ -82,7 +82,7 @@
       ;; special-case unary return types
       (not server-streaming)
       (do
-        (when (some? body) (async/>!! output-ch body))
+        (async/>!! output-ch (or body {}))
         (async/close! output-ch))
 
       ;; Auto-close the output ch if the user does not signify they have consumed it
@@ -114,9 +114,11 @@
 (defn- err-status
   [ctx status msg]
   (update ctx :response
-          #(assoc %
-                  :status   200                ;; always return 200
-                  :trailers (generate-trailers {:grpc-status status :grpc-message msg}))))
+          assoc
+          :headers {"Content-Type" "application/grpc+proto"}
+          :status 200
+          :body ""
+          :trailers (generate-trailers {:grpc-status status :grpc-message msg})))
 
 (def error-interceptor
   (err/error-dispatch

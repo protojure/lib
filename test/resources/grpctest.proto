@@ -29,4 +29,5 @@ service TestService {
     rpc Metadata (google.protobuf.Empty) returns (SimpleResponse);
     rpc ShouldThrow (google.protobuf.Empty) returns (google.protobuf.Empty);
     rpc Async (google.protobuf.Empty) returns (SimpleResponse);
+    rpc AllEmpty(google.protobuf.Empty) returns (google.protobuf.Empty);
 }
