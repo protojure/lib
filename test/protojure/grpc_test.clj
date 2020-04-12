@@ -169,7 +169,11 @@
 
   (Async
     [_ request]
-    (go {:body {:msg "Hello, Async"}})))
+    (go {:body {:msg "Hello, Async"}}))
+
+  (AllEmpty
+    [_ request]
+    {:body {}}))
 
 (defn- greeter-mock-routes [interceptors]
   (pedestal.routes/->tablesyntax {:rpc-metadata greeter/rpc-metadata
@@ -564,4 +568,10 @@
   (testing "Check that async processing functions correctly"
     (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
       (is (-> @(test.client/Async client {}) :msg (= "Hello, Async")))
+      (grpc/disconnect client))))
+
+(deftest test-grpc-empty
+  (testing "Check that empty parameters are passed correctly"
+    (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
+      @(test.client/AllEmpty client {})
       (grpc/disconnect client))))
