@@ -114,9 +114,11 @@
 (defn- err-status
   [ctx status msg]
   (update ctx :response
-          #(assoc %
-                  :status   200                ;; always return 200
-                  :trailers (generate-trailers {:grpc-status status :grpc-message msg}))))
+          assoc
+          :headers {"Content-Type" "application/grpc+proto"}
+          :status 200
+          :body ""
+          :trailers (generate-trailers {:grpc-status status :grpc-message msg})))
 
 (def error-interceptor
   (err/error-dispatch
