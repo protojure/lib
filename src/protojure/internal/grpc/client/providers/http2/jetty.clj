@@ -22,7 +22,8 @@
                                    HttpVersion
                                    MetaData$Request
                                    MetaData$Response
-                                   MetaData))
+                                   MetaData)
+           (org.eclipse.jetty.util.ssl SslContextFactory SslContextFactory$Client))
   (:refer-clojure :exclude [resolve]))
 
 (set! *warn-on-reflection* true)
@@ -166,10 +167,12 @@
 ;; Exposed API
 ;;------------------------------------------------------------------------------------
 
-(defn connect [{:keys [host port input-buffer-size] :or {host "localhost" port 80 input-buffer-size 16384} :as params}]
+(defn connect [{:keys [host port input-buffer-size idle-timeout ssl] :or {host "localhost" port 80 input-buffer-size 16384 ssl false} :as params}]
   (let [client (HTTP2Client.)
         address (InetSocketAddress. ^String host (int port))
-        listener (ServerSessionListener$Adapter.)]
+        listener (ServerSessionListener$Adapter.)
+        ssl-context-factory (when ssl (SslContextFactory$Client.))]
+    (when ssl (.addBean client ssl-context-factory))
     (log/debug "Connecting with parameters: " params)
     (.start client)
     (.setInputBufferSize client input-buffer-size)
@@ -177,7 +180,7 @@
     (.setInitialSessionRecvWindow client input-buffer-size)
     (-> (jetty-promise
          (fn [p]
-           (.connect client nil address listener p)))
+           (.connect client (when ssl ssl-context-factory) address listener p)))
         (p/then (fn [session]
                   (let [context {:client client :session session}]
                     (log/debug "Session established:" context)

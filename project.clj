@@ -15,7 +15,8 @@
                  [com.google.protobuf/protobuf-java "3.11.4" :scope "provided"]
                  [io.undertow/undertow-core "2.0.29.Final" :scope "provided"]
                  [io.undertow/undertow-servlet "2.0.29.Final" :scope "provided"]
-                 [org.eclipse.jetty.http2/http2-client "9.4.20.v20190813" :scope "provided"]
+                 [org.eclipse.jetty.http2/http2-client "9.4.28.v20200408" :scope "provided"]
+                 [org.eclipse.jetty/jetty-alpn-java-client "9.4.28.v20200408" :scope "provided"]
                  [io.pedestal/pedestal.log "0.5.7" :scope "provided"]
                  [io.pedestal/pedestal.service "0.5.7" :scope "provided"]
                  [org.clojure/tools.logging "1.0.0"]
@@ -29,7 +30,7 @@
           :namespaces [#"^(?!protojure.internal)"]}
   :profiles {:dev {:dependencies [[protojure/google.protobuf "0.9.1"]
                                   [org.clojure/tools.namespace "1.0.0"]
-                                  [clj-http "3.10.0"]
+                                  [clj-http "3.10.1"]
                                   [com.taoensso/timbre "4.10.0"]
                                   [org.clojure/data.codec "0.1.1"]
                                   [org.clojure/data.generators "1.0.0"]
