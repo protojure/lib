@@ -167,17 +167,18 @@
 ;; Exposed API
 ;;------------------------------------------------------------------------------------
 
-(defn connect [{:keys [host port input-buffer-size idle-timeout ssl] :or {host "localhost" port 80 input-buffer-size 16384 ssl false} :as params}]
+(defn connect [{:keys [host port input-buffer-size idle-timeout ssl] :or {host "localhost" port 80 input-buffer-size 16384 idle-timeout 30000 ssl false} :as params}]
   (let [client (HTTP2Client.)
         address (InetSocketAddress. ^String host (int port))
         listener (ServerSessionListener$Adapter.)
         ssl-context-factory (when ssl (SslContextFactory$Client.))]
     (when ssl (.addBean client ssl-context-factory))
     (log/debug "Connecting with parameters: " params)
-    (.start client)
     (.setInputBufferSize client input-buffer-size)
     (.setInitialStreamRecvWindow client input-buffer-size)
     (.setInitialSessionRecvWindow client input-buffer-size)
+    (.setIdleTimeout client idle-timeout)
+    (.start client)
     (-> (jetty-promise
          (fn [p]
            (.connect client (when ssl ssl-context-factory) address listener p)))
