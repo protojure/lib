@@ -178,6 +178,8 @@
     (.setInputBufferSize client input-buffer-size)
     (.setInitialStreamRecvWindow client input-buffer-size)
     (.setInitialSessionRecvWindow client input-buffer-size)
+    (when idle-timeout
+      (.setIdleTimeout client idle-timeout))
     (-> (jetty-promise
          (fn [p]
            (.connect client (when ssl ssl-context-factory) address listener p)))
