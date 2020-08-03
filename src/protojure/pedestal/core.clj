@@ -25,7 +25,8 @@
            (java.io InputStream)
            (io.undertow.io Receiver$PartialBytesCallback Receiver$ErrorCallback)
            (java.nio ByteBuffer)
-           (org.xnio.channels StreamSinkChannel))
+           (org.xnio.channels StreamSinkChannel)
+           (java.util.concurrent Executors ThreadPoolExecutor))
   (:refer-clojure :exclude [resolve flush]))
 
 (set! *warn-on-reflection* true)
@@ -221,7 +222,7 @@
   "Our main handler - Every request arriving at the undertow endpoint
   filters through this function.  We decode it and then invoke our pedestal
   chain asynchronously"
-  [interceptors ^HttpServerExchange exchange]
+  [^ThreadPoolExecutor pool interceptors ^HttpServerExchange exchange]
   (let [input-ch         (chan 16384) ;; TODO this allocation likely needs adaptive tuning
         input-stream     (protojure.pedestal.io.InputStream. input-ch)
         input-status     (open-input-channel exchange input-ch)
@@ -238,8 +239,8 @@
                            ::container
                            (partial handle-response exchange input-status))]
 
-    (go
-      (pedestal.chain/execute {:request request} (cons response-handler interceptors)))))
+    (.execute pool
+              (fn [] (pedestal.chain/execute {:request request} (cons response-handler interceptors))))))
 
 (defn- handle-response
   "This function is invoked when the interceptor chain has fully executed and it is now time to
@@ -271,11 +272,12 @@
   the undertow container and pedestal by dealing with the dispatch interop.
   Our real work occurs in the (request) form above"
   [service-map]
-  (let [interceptors (::http/interceptors service-map)]
+  (let [interceptors (::http/interceptors service-map)
+        pool (Executors/newCachedThreadPool)]
     (assoc service-map ::handler
            (reify HttpHandler
              (handleRequest [this exchange]
-               (handle-request interceptors exchange))))))
+               (handle-request pool interceptors exchange))))))
 
 (defn config
   "Given a service map (with interceptor provider established) and a server-opts map,
