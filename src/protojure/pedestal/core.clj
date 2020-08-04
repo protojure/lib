@@ -240,7 +240,11 @@
                            (partial handle-response exchange input-status))]
 
     (.execute pool
-              (fn [] (pedestal.chain/execute {:request request} (cons response-handler interceptors))))))
+              (fn []
+                (try
+                  (pedestal.chain/execute {:request request} (cons response-handler interceptors))
+                  (catch Exception e
+                    (log/error "unhandled exception:" e)))))))
 
 (defn- handle-response
   "This function is invoked when the interceptor chain has fully executed and it is now time to
