@@ -30,7 +30,8 @@ deep-scan: scan
 
 .PHONY: test
 test:
-	$(LEIN) cloverage --fail-threshold $(COVERAGE_THRESHOLD) $(patsubst %,-e %, $(COVERAGE_EXCLUSION))
+	#$(LEIN) cloverage --fail-threshold $(COVERAGE_THRESHOLD) $(patsubst %,-e %, $(COVERAGE_EXCLUSION))
+	$(LEIN) test
 
 doc: $(DOC)
 
