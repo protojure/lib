@@ -11,6 +11,7 @@ jobs:
     environment:
       LEIN_ROOT: nbd
       JVM_OPTS: -Xmx3200m
+      CLOVERAGE_VERSION: 1.1.2
     steps:
       - checkout
       - run:
