@@ -234,7 +234,11 @@ The _max-frame-size_ option dictates how bytes are encoded on the _output_ chann
              (if-let [_msg (<! input)]
                (do
                  (log/trace "Encoding: " _msg)
-                 (let [msg (f _msg)]
+                 (let [msg (f (clojure.walk/postwalk #(cond
+                                                        (record? %) (into {} %)
+                                                        (nil? %) {}
+                                                        :else %)
+                                                     _msg))]
                    (if (some? compressor)
                      (encode-maybe-compressed msg compressor os)
                      (encode-uncompressed msg os))
