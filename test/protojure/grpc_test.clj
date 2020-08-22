@@ -30,7 +30,7 @@
             [protojure.test.grpc.TestService.client :as test.client])
   (:refer-clojure :exclude [resolve]))
 
-(log/set-config! {:level :trace
+(log/set-config! {:level :error
                   :ns-whitelist ["protojure.*"]
                   :appenders {:println (appenders/println-appender {:stream :auto})}})
 
