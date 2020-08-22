@@ -83,6 +83,11 @@
       (lpm/decode f input-ch output-ch {:codecs codecs :content-coding grpc-encoding}))
     (p/resolved true)))
 
+(defn- safe-close [ch]
+  (when ch
+    (log/debug "closing output")
+    (async/close! ch)))
+
 (defn- decode-grpc-status [status]
   (if (some? status)
     (Integer/parseInt status)
@@ -130,6 +135,7 @@
                     status))
           (p/catch (fn [ex]
                      (log/error "GRPC failed:" ex)
+                     (safe-close (:ch output))
                      (throw ex))))))
 
   (disconnect [_]
