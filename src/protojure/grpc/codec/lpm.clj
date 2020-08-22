@@ -149,6 +149,7 @@ The value for the **content-coding** option must be one of
            (catch Exception e
              (reject e))
            (finally
+             (log/trace "closing output channel")
              (async/close! output))))))))
 
 ;;--------------------------------------------------------------------------------------
