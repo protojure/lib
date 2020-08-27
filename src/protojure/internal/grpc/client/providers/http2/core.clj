@@ -71,8 +71,8 @@
   (p/promise
    (fn [resolve reject]
      (go-loop [response response]
-       (if-let [data (<! meta-ch)]
-         (recur (merge response data))
+       (if-let [{:keys [trailers] :as data} (<! meta-ch)]
+         (recur (update response :headers (fn [headers] (merge headers trailers))))
          (resolve response))))))
 
 (defn- receive-body
@@ -88,10 +88,15 @@
     (log/debug "closing output")
     (async/close! ch)))
 
-(defn- decode-grpc-status [status]
+(defn- ->status-code [status]
   (if (some? status)
     (Integer/parseInt status)
     2))
+
+(defn- decode-grpc-status [{:strs [grpc-status grpc-message]}]
+  (let [grpc-status (->status-code grpc-status)]
+    (cond-> {:status grpc-status}
+      (some? grpc-message) (assoc :message grpc-message))))
 
 (defn- receive-payload
   "Handles all remaining response payload, which consists of both response body and trailers.
@@ -103,12 +108,11 @@
   (if (-> status (= 200))
     (-> (p/all [(receive-body codecs data-ch output response)
                 (receive-trailers meta-ch response)])
-        (p/then (fn [[_ {{:strs [grpc-status grpc-message]} :trailers :as response}]] ;; [body-response trailers-response]
-                  (let [grpc-status (decode-grpc-status grpc-status)]
-                    (if (zero? grpc-status)
-                      (-> {:status grpc-status}
-                          (cond-> (some? grpc-message) (assoc :message grpc-message)))
-                      (p/rejected (ex-info "bad grpc-status response" {:status grpc-status :message grpc-message :meta {:response response}})))))))
+        (p/then (fn [[_ {:keys [headers] :as response}]] ;; [body-response trailers-response]
+                  (let [{:keys [status] :as resp} (decode-grpc-status headers)]
+                    (if (zero? status)
+                      resp
+                      (p/rejected (ex-info "bad grpc-status response" (assoc resp :meta {:response response}))))))))
     (p/rejected (ex-info "bad status response" {:response response}))))
 
 ;;-----------------------------------------------------------------------------

@@ -16,66 +16,90 @@
 ;-----------------------------------------------------------------------------
 
 (defn CloseDetect
-  [client params reply]
+  ([client params reply] (CloseDetect client {} params reply))
+  ([client metadata params reply]
   (let [input (async/chan 1)
         desc {:service "protojure.test.grpc.TestService"
               :method  "CloseDetect"
               :input   {:f protojure.test.grpc/new-CloseDetectRequest :ch input}
-              :output  {:f com.google.protobuf/pb->Any :ch reply}}]
+              :output  {:f com.google.protobuf/pb->Any :ch reply}
+              :metadata metadata}]
     (-> (send-unary-params input params)
-        (p/then (fn [_] (grpc/invoke client desc))))))
+        (p/then (fn [_] (grpc/invoke client desc)))))))
 
 (defn FlowControl
-  [client params reply]
+  ([client params reply] (FlowControl client {} params reply))
+  ([client metadata params reply]
   (let [input (async/chan 1)
         desc {:service "protojure.test.grpc.TestService"
               :method  "FlowControl"
               :input   {:f protojure.test.grpc/new-FlowControlRequest :ch input}
-              :output  {:f protojure.test.grpc/pb->FlowControlPayload :ch reply}}]
+              :output  {:f protojure.test.grpc/pb->FlowControlPayload :ch reply}
+              :metadata metadata}]
     (-> (send-unary-params input params)
-        (p/then (fn [_] (grpc/invoke client desc))))))
+        (p/then (fn [_] (grpc/invoke client desc)))))))
 
 (defn Metadata
-  [client params]
+  ([client params] (Metadata client {} params))
+  ([client metadata params]
   (let [input (async/chan 1)
         output (async/chan 1)
         desc {:service "protojure.test.grpc.TestService"
               :method  "Metadata"
               :input   {:f com.google.protobuf/new-Empty :ch input}
-              :output  {:f protojure.test.grpc/pb->SimpleResponse :ch output}}]
+              :output  {:f protojure.test.grpc/pb->SimpleResponse :ch output}
+              :metadata metadata}]
     (-> (send-unary-params input params)
-        (p/then (fn [_] (invoke-unary client desc output))))))
+        (p/then (fn [_] (invoke-unary client desc output)))))))
 
 (defn ShouldThrow
-  [client params]
+  ([client params] (ShouldThrow client {} params))
+  ([client metadata params]
   (let [input (async/chan 1)
         output (async/chan 1)
         desc {:service "protojure.test.grpc.TestService"
               :method  "ShouldThrow"
               :input   {:f com.google.protobuf/new-Empty :ch input}
-              :output  {:f com.google.protobuf/pb->Empty :ch output}}]
+              :output  {:f com.google.protobuf/pb->Empty :ch output}
+              :metadata metadata}]
     (-> (send-unary-params input params)
-        (p/then (fn [_] (invoke-unary client desc output))))))
+        (p/then (fn [_] (invoke-unary client desc output)))))))
 
 (defn Async
-  [client params]
+  ([client params] (Async client {} params))
+  ([client metadata params]
   (let [input (async/chan 1)
         output (async/chan 1)
         desc {:service "protojure.test.grpc.TestService"
               :method  "Async"
               :input   {:f com.google.protobuf/new-Empty :ch input}
-              :output  {:f protojure.test.grpc/pb->SimpleResponse :ch output}}]
+              :output  {:f protojure.test.grpc/pb->SimpleResponse :ch output}
+              :metadata metadata}]
     (-> (send-unary-params input params)
-        (p/then (fn [_] (invoke-unary client desc output))))))
+        (p/then (fn [_] (invoke-unary client desc output)))))))
 
 (defn AllEmpty
-  [client params]
+  ([client params] (AllEmpty client {} params))
+  ([client metadata params]
   (let [input (async/chan 1)
         output (async/chan 1)
         desc {:service "protojure.test.grpc.TestService"
               :method  "AllEmpty"
               :input   {:f com.google.protobuf/new-Empty :ch input}
-              :output  {:f com.google.protobuf/pb->Empty :ch output}}]
+              :output  {:f com.google.protobuf/pb->Empty :ch output}
+              :metadata metadata}]
     (-> (send-unary-params input params)
-        (p/then (fn [_] (invoke-unary client desc output))))))
+        (p/then (fn [_] (invoke-unary client desc output)))))))
+
+(defn AsyncEmpty
+  ([client params reply] (AsyncEmpty client {} params reply))
+  ([client metadata params reply]
+  (let [input (async/chan 1)
+        desc {:service "protojure.test.grpc.TestService"
+              :method  "AsyncEmpty"
+              :input   {:f com.google.protobuf/new-Empty :ch input}
+              :output  {:f com.google.protobuf/pb->Empty :ch reply}
+              :metadata metadata}]
+    (-> (send-unary-params input params)
+        (p/then (fn [_] (grpc/invoke client desc)))))))
 
