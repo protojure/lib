@@ -97,9 +97,9 @@
               data (if (.isResponse metadata)
                      (let [status (.getStatus ^MetaData$Response metadata)
                            reason (.getReason ^MetaData$Response metadata)]
-                       (-> {:headers fields}
-                           (cond-> (some? status) (assoc :status status))
-                           (cond-> (some? reason) (assoc :reason reason))))
+                       (cond-> {:headers fields}
+                         (some? status) (assoc :status status)
+                         (some? reason) (assoc :reason reason)))
                      {:trailers fields})
               last? (.isEndStream ^HeadersFrame frame)]
           (stream-log :trace stream "Received HEADER-FRAME: " data " ENDFRAME=" last?)

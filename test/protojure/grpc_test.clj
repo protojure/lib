@@ -173,7 +173,12 @@
 
   (AllEmpty
     [_ request]
-    {:body {}}))
+    {:body {}})
+
+  (AsyncEmpty
+    [_ {:keys [grpc-out]}]
+    (async/close! grpc-out)
+    {:body grpc-out}))
 
 (defn- greeter-mock-routes [interceptors]
   (pedestal.routes/->tablesyntax {:rpc-metadata greeter/rpc-metadata
@@ -587,4 +592,11 @@
   (testing "Check that empty parameters are passed correctly"
     (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
       @(test.client/AllEmpty client {})
+      (grpc/disconnect client))))
+
+(deftest test-grpc-async-empty
+  (testing "Check that an empty result-set is handled "
+    (let [output (async/chan 1)
+          client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
+      @(test.client/AsyncEmpty client {} output)
       (grpc/disconnect client))))
