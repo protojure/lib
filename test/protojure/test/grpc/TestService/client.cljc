@@ -103,3 +103,15 @@
     (-> (send-unary-params input params)
         (p/then (fn [_] (grpc/invoke client desc)))))))
 
+(defn DeniedStreamer
+  ([client params reply] (DeniedStreamer client {} params reply))
+  ([client metadata params reply]
+  (let [input (async/chan 1)
+        desc {:service "protojure.test.grpc.TestService"
+              :method  "DeniedStreamer"
+              :input   {:f com.google.protobuf/new-Empty :ch input}
+              :output  {:f com.google.protobuf/pb->Empty :ch reply}
+              :metadata metadata}]
+    (-> (send-unary-params input params)
+        (p/then (fn [_] (grpc/invoke client desc)))))))
+

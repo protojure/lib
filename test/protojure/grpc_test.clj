@@ -10,6 +10,8 @@
             [promesa.core :as p]
             [io.pedestal.http :as pedestal]
             [io.pedestal.http.body-params :as body-params]
+            [io.pedestal.interceptor :refer [interceptor]]
+            [io.pedestal.interceptor.chain :refer [terminate]]
             [taoensso.timbre :as log]
             [taoensso.timbre.appenders.core :as appenders]
             [taoensso.timbre.tools.logging :refer [use-timbre]]
@@ -327,12 +329,33 @@
                    (assoc response :body body))))))
 
 ;;-----------------------------------------------------------------------------
+;; Security Interceptor
+;;-----------------------------------------------------------------------------
+(defn- permission-denied
+  "Terminates the context with a 401 status"
+  [context]
+  (-> context
+      (assoc :response {:status 401})
+      (terminate)))
+
+(defn- deny-streamer
+  "This interceptor will always deny calls to the DeniedStreamer interface"
+  [{{:keys [path-info]} :request :as context}]
+  (cond-> context
+    (= path-info "/protojure.test.grpc.TestService/DeniedStreamer") permission-denied))
+
+(def reject-denied-streamer
+  (interceptor
+   {:name ::require-auth :enter deny-streamer}))
+
+;;-----------------------------------------------------------------------------
 ;; Fixtures
 ;;-----------------------------------------------------------------------------
 (defn create-service []
   (let [port (test.utils/get-free-port)
         interceptors [(body-params/body-params)
-                      pedestal/html-body]
+                      pedestal/html-body
+                      reject-denied-streamer]
         server-params {:env                      :prod
                        ::pedestal/routes         (into #{} (routes interceptors))
                        ::pedestal/port           port
@@ -599,4 +622,12 @@
     (let [output (async/chan 1)
           client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
       @(test.client/AsyncEmpty client {} output)
+      (grpc/disconnect client))))
+
+(deftest test-grpc-denied-streamer
+  (testing "Check that a streaming GRPC that encounters a permission denied terminates properly"
+    (let [output (async/chan 1)
+          client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
+      (is (thrown? java.util.concurrent.ExecutionException
+                   @(test.client/DeniedStreamer client {} output)))
       (grpc/disconnect client))))
