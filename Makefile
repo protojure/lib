@@ -9,7 +9,7 @@ OUTPUT = target/$(NAME)-$(VERSION).jar
 POM = target/pom.xml
 DOC = target/doc/index.html
 
-COVERAGE_THRESHOLD = 85
+COVERAGE_THRESHOLD = 84
 COVERAGE_EXCLUSION += "user"
 COVERAGE_EXCLUSION += "protojure.internal.pedestal.io"
 

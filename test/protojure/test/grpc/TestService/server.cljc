@@ -17,7 +17,8 @@
   (ShouldThrow [this param])
   (Async [this param])
   (AllEmpty [this param])
-  (AsyncEmpty [this param]))
+  (AsyncEmpty [this param])
+  (DeniedStreamer [this param]))
 
 (defn- CloseDetect-dispatch
   [ctx request]
@@ -40,6 +41,9 @@
 (defn- AsyncEmpty-dispatch
   [ctx request]
   (AsyncEmpty ctx request))
+(defn- DeniedStreamer-dispatch
+  [ctx request]
+  (DeniedStreamer ctx request))
 
 (def ^:const rpc-metadata
   [{:pkg "protojure.test.grpc" :service "TestService" :method "CloseDetect" :method-fn CloseDetect-dispatch :server-streaming true :client-streaming false :input pb->CloseDetectRequest :output com.google.protobuf/new-Any}
@@ -48,4 +52,5 @@
    {:pkg "protojure.test.grpc" :service "TestService" :method "ShouldThrow" :method-fn ShouldThrow-dispatch :server-streaming false :client-streaming false :input com.google.protobuf/pb->Empty :output com.google.protobuf/new-Empty}
    {:pkg "protojure.test.grpc" :service "TestService" :method "Async" :method-fn Async-dispatch :server-streaming false :client-streaming false :input com.google.protobuf/pb->Empty :output new-SimpleResponse}
    {:pkg "protojure.test.grpc" :service "TestService" :method "AllEmpty" :method-fn AllEmpty-dispatch :server-streaming false :client-streaming false :input com.google.protobuf/pb->Empty :output com.google.protobuf/new-Empty}
-   {:pkg "protojure.test.grpc" :service "TestService" :method "AsyncEmpty" :method-fn AsyncEmpty-dispatch :server-streaming true :client-streaming false :input com.google.protobuf/pb->Empty :output com.google.protobuf/new-Empty}])
+   {:pkg "protojure.test.grpc" :service "TestService" :method "AsyncEmpty" :method-fn AsyncEmpty-dispatch :server-streaming true :client-streaming false :input com.google.protobuf/pb->Empty :output com.google.protobuf/new-Empty}
+   {:pkg "protojure.test.grpc" :service "TestService" :method "DeniedStreamer" :method-fn DeniedStreamer-dispatch :server-streaming true :client-streaming false :input com.google.protobuf/pb->Empty :output com.google.protobuf/new-Empty}])

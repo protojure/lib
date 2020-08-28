@@ -136,6 +136,7 @@
 (defn- open-output-channel
   "Opens the response channel and sets it up for asynchronous operation"
   [^HttpServerExchange exchange]
+  (log/debug "opening output channel" exchange)
   (let [output-ch (.getResponseChannel exchange)]
     (.resumeWrites output-ch)
     output-ch))
@@ -143,12 +144,14 @@
 (defn- close-output-channel
   "Flushes and closes the response channel"
   [^HttpServerExchange exchange ^StreamSinkChannel ch]
+  (log/debug "closing output channel" exchange)
   (.shutdownWrites ch)
   (loop []
     (if (.flush ch)
       (.close ch)
       (recur)))
-  (.endExchange exchange))
+  (.endExchange exchange)
+  (log/debug "channel closed" exchange))
 
 (defn- open-input-channel
   "Receives request body as a callback and puts the bytes on a core.async channel"
@@ -190,6 +193,9 @@
 (defmethod transmit-body (Class/forName "[B")
   [ch resp-body]
   (write-direct-data ch resp-body))
+(defmethod transmit-body nil
+  [ch resp-body]
+  (p/resolved true))
 (defmethod transmit-body :default
   [ch resp-body]
   (transmit-body ch (with-out-str (pr resp-body))))
@@ -203,6 +209,9 @@
    (fn [resolve reject]
      (go
        (resolve (write-trailers exchange (<! trailers)))))))
+(defmethod transmit-trailers nil
+  [exchange trailers]
+  (p/resolved true))
 (defmethod transmit-trailers :default
   [exchange trailers]
   (p/resolved (write-trailers exchange trailers)))
@@ -252,6 +261,8 @@
   [^HttpServerExchange exchange
    input-status
    {:keys [status headers body trailers] :as response}]
+
+  (log/debug "response:" response)
 
   ;; Set Response StatusCode
   (.setStatusCode exchange status)
