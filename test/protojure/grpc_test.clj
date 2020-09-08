@@ -622,6 +622,20 @@
       @(test.client/AsyncEmpty client {} output)
       (grpc/disconnect client))))
 
+(deftest test-client-transmit-dataframe-exception
+  (testing "Check that a client transmit exception propagates correctly"
+    (let [output (async/chan 1)
+          input (async/chan 1)
+          client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})
+          p  (grpc/invoke client {:service "foobar"
+                                  :method  "NotExist"
+                                  :input   {:f example/new-Money :ch input}
+                                  :output  {:f example/pb->Money :ch output}})]
+      (do
+        (async/>!! input {:currency_code (apply str (repeat 20 "foobar")) :units 42 :nanos 750000000})
+        (grpc/disconnect client))
+      (is (thrown-with-msg? java.util.concurrent.ExecutionException #"org.eclipse.jetty.io.EofException" @p)))))
+
 (deftest test-grpc-denied-streamer
   (testing "Check that a streaming GRPC that encounters a permission denied terminates properly"
     (let [output (async/chan 1)

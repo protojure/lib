@@ -156,12 +156,26 @@
   "Creates DATA frames from the buffers on the channel"
   [input stream]
   (when (some? input)
-    (go-loop []
-      (if-let [frame (<! input)]
-        (do
-          (transmit-data-frame stream frame)
-          (recur))
-        (transmit-eof stream)))))
+    (let [exception-chan (async/chan 32)]
+      (go-loop []
+        (if-let [frame (<! input)]
+          (do
+            (try
+              (transmit-data-frame stream frame)
+              (catch Exception e
+                (log/trace "Exception: " e "thrown while calling transmit-data-frame")
+                (>! exception-chan e)))
+            (recur))
+          (do
+            (try
+              (transmit-eof stream)
+              (catch Exception e
+                (log/trace "Exception: " e "thrown while calling transmit-eof")
+                (>! exception-chan e)))
+            (async/close! exception-chan))))
+      (if-let [e (<!! exception-chan)]
+        (throw e)
+        nil))))
 
 ;;------------------------------------------------------------------------------------
 ;; Exposed API
