@@ -29,7 +29,8 @@
             [example.hello :refer [new-HelloRequest pb->HelloRequest new-HelloReply pb->HelloReply]]
             [example.hello.Greeter :as greeter]
             [protojure.test.grpc.TestService.server :as test.server]
-            [protojure.test.grpc.TestService.client :as test.client])
+            [protojure.test.grpc.TestService.client :as test.client]
+            [protojure.internal.grpc.client.providers.http2.jetty :as jetty])
   (:refer-clojure :exclude [resolve]))
 
 (log/set-config! {:level :error
@@ -322,7 +323,8 @@
         (>! ic body))
       (async/close! ic))
 
-    @(-> (p/all [(jetty-client/send-request context (assoc request :input-ch ic :meta-ch mc :output-ch oc))
+    @(-> (p/all [(-> (jetty-client/send-request context (assoc request :input-ch ic :meta-ch mc :output-ch oc))
+                     (p/then (partial jetty/transmit-data-frames ic)))
                  (receive-metadata mc)
                  (receive-body oc)])
          (p/then (fn [[_ response body]]
@@ -621,6 +623,18 @@
           client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
       @(test.client/AsyncEmpty client {} output)
       (grpc/disconnect client))))
+
+(deftest test-client-transmit-dataframe-exception
+  (testing "Check that a client transmit exception propagates correctly"
+    (let [output (async/chan 1)
+          input (async/chan 1)
+          client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})
+          p  (grpc/invoke client {:service "foobar"
+                                  :method  "NotExist"
+                                  :input   {:f example/new-Money :ch input}
+                                  :output  {:f example/pb->Money :ch output}})]
+      (async/>!! input {:currency_code (apply str (repeat 20 "foobar")) :units 42 :nanos 750000000})
+      (is (thrown-with-msg? java.util.concurrent.ExecutionException #"bad status response" @p)))))
 
 (deftest test-grpc-denied-streamer
   (testing "Check that a streaming GRPC that encounters a permission denied terminates properly"
