@@ -53,7 +53,7 @@
   core.async channel closure as an error, and terminate the processing once the response contains
   the :status code.
   "
-  [meta-ch request]
+  [meta-ch]
   (p/promise
    (fn [resolve reject]
      (go-loop [response {}]
@@ -115,6 +115,13 @@
                       (p/rejected (ex-info "bad grpc-status response" (assoc resp :meta {:response response}))))))))
     (p/rejected (ex-info "bad status response" {:response response}))))
 
+(defn- client-send [input-ch stream]
+  (jetty/transmit-data-frames input-ch stream))
+
+(defn- client-receive [meta-ch codecs output-ch output]
+  (-> (receive-headers meta-ch)
+      (p/then (partial receive-payload codecs meta-ch output-ch output))))
+
 ;;-----------------------------------------------------------------------------
 ;;-----------------------------------------------------------------------------
 ;; External API
@@ -132,9 +139,18 @@
           meta-ch (async/chan 32)
           output-ch (when (some? output) (async/chan input-buffer-size))]
       (-> (send-request context uri codecs content-coding metadata params input-ch meta-ch output-ch)
-          (p/then (partial receive-headers meta-ch))
-          (p/then (partial receive-payload codecs meta-ch output-ch output))
-          (p/then (fn [status]
+          (p/then (fn [stream]
+                    (p/all [(-> (client-send input-ch stream)
+                                (p/catch (fn [ex]
+                                           (.close stream)
+                                           (throw ex))))
+                            (-> (client-receive meta-ch codecs output-ch output)
+                                (p/catch (fn [ex]
+                                           (async/close! output-ch)
+                                           (async/close! meta-ch)
+                                           (async/close! input-ch)
+                                           (throw ex))))])))
+          (p/then (fn [[_ status]]
                     (log/trace "GRPC completed:" status)
                     status))
           (p/catch (fn [ex]
