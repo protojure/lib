@@ -174,19 +174,22 @@
         ssl-context-factory (when ssl (SslContextFactory$Client.))]
     (when ssl (.addBean client ssl-context-factory))
     (log/debug "Connecting with parameters: " params)
-    (.start client)
     (.setInputBufferSize client input-buffer-size)
     (.setInitialStreamRecvWindow client input-buffer-size)
     (.setInitialSessionRecvWindow client input-buffer-size)
     (when idle-timeout
       (.setIdleTimeout client idle-timeout))
+    (.start client)
     (-> (jetty-promise
          (fn [p]
            (.connect client (when ssl ssl-context-factory) address listener p)))
         (p/then (fn [session]
                   (let [context {:client client :session session}]
                     (log/debug "Session established:" context)
-                    context))))))
+                    context)))
+        (p/catch (fn [e]
+                   (.stop client)
+                   (throw e))))))
 
 (defn send-request
   [{:keys [^Session session] :as context}
