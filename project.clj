@@ -5,10 +5,10 @@
             :url "https://www.apache.org/licenses/LICENSE-2.0"
             :year 2020
             :key "apache-2.0"}
-  :plugins [[lein-codox "0.10.4"]
-            [lein-cljfmt "0.5.7"]
-            [lein-kibit "0.1.6"]
-            [lein-bikeshed "0.5.1"]
+  :plugins [[lein-codox "0.10.7"]
+            [lein-cljfmt "0.7.0"]
+            [lein-kibit "0.1.8"]
+            [lein-bikeshed "0.5.2"]
             [lein-cloverage "1.2.0"]]
   :dependencies [[org.clojure/clojure "1.10.1" :scope "provided"]
                  [org.clojure/core.async "1.0.567" :scope "provided"]
