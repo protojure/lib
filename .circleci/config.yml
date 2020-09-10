@@ -7,18 +7,16 @@ jobs:
   build:
     working_directory: ~/lib
     docker:
-      - image: alpine:3.9.2
+      - image: openjdk:14-alpine3.10
     environment:
       LEIN_ROOT: nbd
       JVM_OPTS: -Xmx3200m
-      CLOVERAGE_VERSION: 1.1.2
     steps:
       - checkout
       - run:
           shell: /bin/sh
           command: |
             apk add --no-progress --no-cache \
-               openjdk8 \
                make \
                bash \
                nss
