@@ -7,21 +7,13 @@ jobs:
   build:
     working_directory: ~/lib
     docker:
-      - image: alpine:3.9.2
+      - image: circleci/clojure:openjdk-14-lein-buster
     environment:
       LEIN_ROOT: nbd
       JVM_OPTS: -Xmx3200m
     steps:
       - checkout
-      - run:
-          shell: /bin/sh
-          command: |
-            apk add --no-progress --no-cache \
-               openjdk8 \
-               make \
-               bash \
-               nss
-            ./lein deps
+      - run: lein deps
       - run: make all
       - run: |
           mkdir tmp
