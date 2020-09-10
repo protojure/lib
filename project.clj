@@ -9,7 +9,7 @@
             [lein-cljfmt "0.5.7"]
             [lein-kibit "0.1.6"]
             [lein-bikeshed "0.5.1"]
-            [lein-cloverage "1.1.2"]]
+            [lein-cloverage "1.2.0"]]
   :dependencies [[org.clojure/clojure "1.10.1" :scope "provided"]
                  [org.clojure/core.async "1.0.567" :scope "provided"]
                  [com.google.protobuf/protobuf-java "3.11.4" :scope "provided"]
