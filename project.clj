@@ -1,4 +1,4 @@
-(defproject protojure "1.5.7"
+(defproject protojure "1.5.8-SNAPSHOT"
   :description "Support library for protoc-gen-clojure, providing native Clojure support for Google Protocol Buffers and GRPC applications"
   :url "http://github.com/protojure/library"
   :license {:name "Apache License 2.0"
