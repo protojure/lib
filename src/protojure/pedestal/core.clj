@@ -150,6 +150,7 @@
     (if (.flush ch)
       (.close ch)
       (recur)))
+  (-> exchange .getConnection .close)
   (.endExchange exchange)
   (log/debug "channel closed" exchange))
 
