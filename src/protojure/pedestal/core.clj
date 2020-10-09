@@ -150,7 +150,6 @@
     (if (.flush ch)
       (.close ch)
       (recur)))
-  (.endExchange exchange)
   (log/debug "channel closed" exchange))
 
 (defn- open-input-channel
@@ -216,14 +215,34 @@
   [exchange trailers]
   (p/resolved (write-trailers exchange trailers)))
 
-(defn subscribe-close [^HttpServerExchange exchange]
+(defn handle-disconnect [connections k]
+  (swap! connections
+         (fn [x]
+           (let [chans (some-> x (get k) (vals))]
+             (run! #(>!! % true) chans))
+           (dissoc x k))))
+
+(defn subscribe-close [connections ^HttpServerExchange exchange]
   (let [conn (.getConnection exchange)
+        k (hash conn)
         ch (promise-chan)]
-    (.addCloseListener conn
-                       (reify ServerConnection$CloseListener
-                         (closed [_ _]
-                           (>!! ch true))))
+    (swap! connections
+           (fn [x]
+             (update x k
+                     (fn [y]
+                       (when (nil? y)
+                         (.addCloseListener conn
+                                            (reify ServerConnection$CloseListener
+                                              (closed [_ _]
+                                                (handle-disconnect connections k)))))
+                       (assoc y exchange ch)))))
     ch))
+
+(defn unsubscribe-close [connections ^HttpServerExchange exchange]
+  (let [conn (.getConnection exchange)]
+    (swap! connections
+           (fn [x]
+             (update x conn #(dissoc % exchange))))))
 
 (declare handle-response)
 
@@ -231,7 +250,7 @@
   "Our main handler - Every request arriving at the undertow endpoint
   filters through this function.  We decode it and then invoke our pedestal
   chain asynchronously"
-  [^ThreadPoolExecutor pool interceptors ^HttpServerExchange exchange]
+  [^ThreadPoolExecutor pool interceptors connections ^HttpServerExchange exchange]
   (let [input-ch         (chan 16384) ;; TODO this allocation likely needs adaptive tuning
         input-stream     (protojure.pedestal.io.InputStream. input-ch)
         input-status     (open-input-channel exchange input-ch)
@@ -240,13 +259,13 @@
                           :headers          (get-request-headers exchange)
                           :body             input-stream
                           :body-ch          input-ch
-                          :close-ch         (subscribe-close exchange)
+                          :close-ch         (subscribe-close connections exchange)
                           :uri              (.getRequestURI exchange)
                           :path-info        (.getRequestPath exchange)
                           :async-supported? true}
         response-handler  (pedestal.interceptors/on-response
                            ::container
-                           (partial handle-response exchange input-status))]
+                           (partial handle-response connections exchange input-status))]
 
     (.execute pool
               (fn []
@@ -258,7 +277,8 @@
 (defn- handle-response
   "This function is invoked when the interceptor chain has fully executed and it is now time to
   initiate the response to the client"
-  [^HttpServerExchange exchange
+  [connections
+   ^HttpServerExchange exchange
    input-status
    {:keys [status headers body trailers] :as response}]
 
@@ -279,8 +299,10 @@
                 (transmit-trailers exchange trailers)])
         (p/then (fn [_] (close-output-channel exchange output-ch)))
         (p/catch (fn [ex]
-                   (log/error "Error:" (with-out-str (pprint ex)))
-                   (.endExchange exchange))))))
+                   (log/error "Error:" (with-out-str (pprint ex)))))
+        (p/finally (fn []
+                     (unsubscribe-close connections exchange)
+                     (.endExchange exchange))))))
 
 (defn provider
   "Generates our undertow provider, which defines the callback point between
@@ -288,11 +310,12 @@
   Our real work occurs in the (request) form above"
   [service-map]
   (let [interceptors (::http/interceptors service-map)
-        pool (Executors/newCachedThreadPool)]
+        pool (Executors/newCachedThreadPool)
+        connections (atom {})]
     (assoc service-map ::handler
            (reify HttpHandler
              (handleRequest [this exchange]
-               (handle-request pool interceptors exchange))))))
+               (handle-request pool interceptors connections exchange))))))
 
 (defn config
   "Given a service map (with interceptor provider established) and a server-opts map,
