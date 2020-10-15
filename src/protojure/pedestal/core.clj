@@ -239,10 +239,9 @@
     ch))
 
 (defn unsubscribe-close [connections ^HttpServerExchange exchange]
-  (let [conn (.getConnection exchange)]
-    (swap! connections
-           (fn [x]
-             (update x conn #(dissoc % exchange))))))
+  (let [conn (.getConnection exchange)
+        k (hash conn)]
+    (handle-disconnect connections k)))
 
 (declare handle-response)
 
