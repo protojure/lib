@@ -215,33 +215,39 @@
   [exchange trailers]
   (p/resolved (write-trailers exchange trailers)))
 
-(defn handle-disconnect [connections k]
+(defn disconnect! [channel]
+  (>!! channel true))
+
+(defn handle-disconnect [connections conn]
   (swap! connections
          (fn [x]
-           (let [chans (some-> x (get k) (vals))]
-             (run! #(>!! % true) chans))
-           (dissoc x k))))
+           (let [channels (some-> x (get conn) (vals))]
+             (run! disconnect! channels))
+           (dissoc x conn))))
 
 (defn subscribe-close [connections ^HttpServerExchange exchange]
   (let [conn (.getConnection exchange)
-        k (hash conn)
         ch (promise-chan)]
     (swap! connections
            (fn [x]
-             (update x k
+             (update x conn
                      (fn [y]
                        (when (nil? y)
                          (.addCloseListener conn
                                             (reify ServerConnection$CloseListener
                                               (closed [_ _]
-                                                (handle-disconnect connections k)))))
+                                                (handle-disconnect connections conn)))))
                        (assoc y exchange ch)))))
     ch))
 
 (defn unsubscribe-close [connections ^HttpServerExchange exchange]
-  (let [conn (.getConnection exchange)
-        k (hash conn)]
-    (handle-disconnect connections k)))
+  (let [conn (.getConnection exchange)]
+    (swap! connections
+           (fn [x]
+             (update x conn (fn [y]
+                              (let [channel (get y exchange)]
+                                (disconnect! channel))
+                              (dissoc y exchange)))))))
 
 (declare handle-response)
 
