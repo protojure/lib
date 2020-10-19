@@ -16,6 +16,7 @@
             [protojure.pedestal.ssl :as ssl])
   (:import (io.undertow.server HttpHandler
                                HttpServerExchange
+                               ServerConnection
                                ServerConnection$CloseListener)
            (io.undertow Undertow
                         UndertowOptions)
@@ -218,36 +219,46 @@
 (defn disconnect! [channel]
   (>!! channel true))
 
-(defn handle-disconnect [connections conn]
+(defn handle-disconnect [connections k]
   (swap! connections
          (fn [x]
-           (let [channels (some-> x (get conn) (vals))]
+           (let [channels (some-> x (get k) (vals))]
              (run! disconnect! channels))
-           (dissoc x conn))))
+           (dissoc x k))))
+
+(defn add-close-listener [^ServerConnection conn f]
+  (.addCloseListener conn f))
+
+(defn conn-id [conn]
+  (-> conn .getPeerAddress hash))
 
 (defn subscribe-close [connections ^HttpServerExchange exchange]
   (let [conn (.getConnection exchange)
+        kc (conn-id conn)
+        ke (hash exchange)
         ch (promise-chan)]
     (swap! connections
            (fn [x]
-             (update x conn
+             (update x kc
                      (fn [y]
                        (when (nil? y)
-                         (.addCloseListener conn
-                                            (reify ServerConnection$CloseListener
-                                              (closed [_ _]
-                                                (handle-disconnect connections conn)))))
-                       (assoc y exchange ch)))))
+                         (add-close-listener conn
+                                             (reify ServerConnection$CloseListener
+                                               (closed [_ _]
+                                                 (handle-disconnect connections kc)))))
+                       (assoc y ke ch)))))
     ch))
 
 (defn unsubscribe-close [connections ^HttpServerExchange exchange]
-  (let [conn (.getConnection exchange)]
+  (let [conn (.getConnection exchange)
+        kc (conn-id conn)
+        ke (hash exchange)]
     (swap! connections
            (fn [x]
-             (update x conn (fn [y]
-                              (let [channel (get y exchange)]
-                                (disconnect! channel))
-                              (dissoc y exchange)))))))
+             (update x kc (fn [y]
+                            (let [channel (get y ke)]
+                              (disconnect! channel))
+                            (dissoc y ke)))))))
 
 (declare handle-response)
 
