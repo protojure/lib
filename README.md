@@ -10,7 +10,7 @@ You can read the [SDK CLJ documentation](https://cljdoc.org/d/protojure/protojur
 
 ## Usage
 
-Coming soon!
+See our [full documentation](https://protojure.github.io/)
 
 ## License
 
@@ -18,4 +18,4 @@ This project is licensed under the Apache License 2.0.
 
 ## Contributing
 
-We cannot (yet) accept outside contributions to the code base at this time.  Please check for updates in the future regarding acceptance of outside contributions.
+Pull requests welcome.  Please be sure to include a [DCO](https://en.wikipedia.org/wiki/Developer_Certificate_of_Origin) in any commit messages.
