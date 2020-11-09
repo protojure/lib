@@ -10,7 +10,7 @@ You can read the [SDK CLJ documentation](https://cljdoc.org/d/protojure/protojur
 
 ## Usage
 
-See our [full documentation](https://protojure.github.io/)
+See our [full documentation](https://protojure.readthedocs.io)
 
 ## License
 
