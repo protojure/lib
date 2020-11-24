@@ -26,7 +26,18 @@
             [protojure.pedestal.routes :as pedestal.routes]
             [example.hello :refer [new-HelloRequest pb->HelloReply]]
             [clj-http.client :as client]
-            [protojure.grpc.codec.lpm :as lpm]))
+            [protojure.grpc.codec.lpm :as lpm]
+            [protojure.test.grpc.TestService.server :as test.server]
+            [protojure.pedestal.interceptors.grpc-web :as grpc.web]
+            [taoensso.timbre.appenders.core :as appenders]
+            [taoensso.timbre :as log]
+            [taoensso.timbre.tools.logging :refer [use-timbre]]))
+
+(use-timbre)
+
+(log/set-config! {:level        :trace
+                  :ns-whitelist ["protojure.*"]
+                  :appenders    {:println (appenders/println-appender {:stream :auto})}})
 
 (defonce test-env (atom {}))
 
@@ -72,6 +83,21 @@
                                   :interceptors     interceptors
                                   :callback-context (Greeter.)}))
 
+;;-----------------------------------------------------------------------------
+;; TestService service endpoint
+;;-----------------------------------------------------------------------------
+
+(deftype TestService []
+  test.server/Service
+  (Metadata
+    [_ request]
+    (throw (Exception. "foobar"))))
+
+(defn- test-service-mock-routes [interceptors]
+  (pedestal.routes/->tablesyntax {:rpc-metadata test.server/rpc-metadata
+                                  :interceptors interceptors
+                                  :callback-context (TestService.)}))
+
 (defn- grpc-connect
   ([] (grpc-connect (:port @test-env)))
   ([port]
@@ -85,7 +111,9 @@
         interceptors [(body-params/body-params)
                       pedestal/html-body]
         server-params {:env                      :prod
-                       ::pedestal/routes         (into #{} (greeter-mock-routes interceptors))
+                       ::pedestal/routes         (into #{} (concat
+                                                            (greeter-mock-routes interceptors)
+                                                            (test-service-mock-routes interceptors)))
                        ::pedestal/port           port
 
                        ::pedestal/type           protojure.pedestal/config
@@ -122,14 +150,43 @@
       (let [lpm (async/<!! (async/into [] out))
             b64-encoded (-> (java.util.Base64/getEncoder)
                             (.encode (byte-array lpm)))
-            body (-> (java.util.Base64/getDecoder)
-                     (.decode (-> (client/post
-                                   (str "http://localhost:" (:port @test-env) "/example.hello.Greeter/SayHello")
-                                   {:body    b64-encoded
-                                    :content-type "application/grpc-web-text"
-                                    :accept       "application/grpc-web-text"})
-                                  :body)))]
-        (doseq [b body]
+            body (-> (client/post
+                      (str "http://localhost:" (:port @test-env) "/example.hello.Greeter/SayHello")
+                      {:body         b64-encoded
+                       :content-type "application/grpc-web-text"
+                       :accept       "application/grpc-web-text"})
+                     :body)
+            decoded-body (.decode (java.util.Base64/getDecoder) body)]
+        (doseq [b (into [] decoded-body)]
           (async/>!! resp-in b))
         (async/close! resp-in)
         (is (= "Hello, World" (:message (async/<!! resp-out))))))))
+
+(deftest grpc-web-exception-check
+  (testing "Check that wff grpc-web trailers are received when a handler throws an exception"
+    (let [resp (client/post
+                (str "http://localhost:" (:port @test-env) "/protojure.test.grpc.TestService/Metadata")
+                {:content-type "application/grpc-web-text"
+                 :accept       "application/grpc-web-text"})]
+      (is (= "gAAAAHxncnBjLXN0YXR1czoxMw0KZ3JwYy1tZXNzYWdlOmphdmEubGFuZy5FeGNlcHRpb24gaW4gSW50ZXJjZXB0b3IgOnByb3RvanVyZS50ZXN0LmdycGMuVGVzdFNlcnZpY2UvTWV0YWRhdGEtaGFuZGxlciAtIGZvb2Jhcg0K"
+             (:body resp))))))
+
+(deftest grpc-web-bad-request-encoding-check
+  (testing "Check that wff grpc-web trailers are received when a handler throws an exception"
+    (let [resp (client/post
+                (str "http://localhost:" (:port @test-env) "/protojure.test.grpc.TestService/Metadata")
+                {:content-type "application/grpc-web-text"
+                 :accept       "application/grpc-web-text"
+                 :body (byte-array [1])})]
+      (is (= "gAAAADhncnBjLXN0YXR1czozDQpncnBjLW1lc3NhZ2U6QmFkIEJhc2U2NCBFbmNvZGVkIFJlcXVlc3QNCg=="
+             (:body resp))))))
+
+(deftest grpc-web-bad-request-encoding-check
+  (testing "Check that wff grpc-web trailers are received when a handler throws an exception"
+    (let [resp (client/post
+                (str "http://localhost:" (:port @test-env) "/protojure.test.grpc.TestService/Metadata")
+                {:content-type "application/grpc-web"
+                 :accept       "application/grpc-web"
+                 :body (byte-array [1])})]
+      (is (clojure.string/includes?
+           (:body resp) "grpc-status:13\r")))))
