@@ -34,6 +34,7 @@
                                   [com.taoensso/timbre "4.10.0"]
                                   [org.clojure/data.codec "0.1.1"]
                                   [org.clojure/data.generators "1.0.0"]
-                                  [danlentz/clj-uuid "0.1.9"]]
+                                  [danlentz/clj-uuid "0.1.9"]
+                                  [eftest "0.5.9"]]
                    :resource-paths ["test/resources"]}})
 
