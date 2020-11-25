@@ -146,11 +146,14 @@
   "Flushes and closes the response channel"
   [^HttpServerExchange exchange ^StreamSinkChannel ch]
   (log/debug "closing output channel" exchange)
-  (.shutdownWrites ch)
-  (loop []
-    (if (.flush ch)
-      (.close ch)
-      (recur)))
+  (try
+    (.shutdownWrites ch)
+    (loop []
+      (if (.flush ch)
+        (.close ch)
+        (recur)))
+    (catch Exception e
+      (log/error "close-output-channel error:" (ex-message e))))
   (log/debug "channel closed" exchange))
 
 (defn- open-input-channel
@@ -313,10 +316,10 @@
     (-> (p/all [input-status
                 (transmit-body output-ch body)
                 (transmit-trailers exchange trailers)])
-        (p/then (fn [_] (close-output-channel exchange output-ch)))
         (p/catch (fn [ex]
                    (log/error "Error:" (with-out-str (pprint ex)))))
         (p/finally (fn []
+                     (close-output-channel exchange output-ch)
                      (unsubscribe-close connections exchange)
                      (.endExchange exchange))))))
 
