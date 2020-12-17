@@ -35,7 +35,8 @@
   (log/trace (str "Invoking GRPC \""  service "/" method "\""))
   (let [hdrs (-> {"content-type" "application/grpc+proto"
                   "grpc-encoding" (or content-coding "identity")
-                  "grpc-accept-encoding" (codecs-to-accept codecs)}
+                  "grpc-accept-encoding" (codecs-to-accept codecs)
+                  "te" "trailers"}
                  (merge conn-metadata metadata))
         url (str uri "/" service "/" method)]
     (jetty/send-request context {:method    "POST"
