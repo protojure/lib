@@ -16,7 +16,8 @@
             [com.google.protobuf :as google]
             [promesa.core :as p]
             [example.types :as example]
-            [com.example.addressbook :as addressbook])
+            [com.example.addressbook :as addressbook]
+            [com.example.empty :as empty])
   (:import (com.google.protobuf CodedOutputStream
                                 CodedInputStream)
            (java.io ByteArrayOutputStream)
@@ -341,6 +342,71 @@
                      any/pb->
                      :name)]
       (is (-> input (= output))))))
+
+(deftest test-empty-oneof
+  (testing "Verify that empty messages are serialized/deserialized correctly"
+    (is (= (empty/new-Empty {})
+           (-> {:opt {:e {}}}
+               empty/new-Selection
+               ->pb
+               empty/pb->Selection
+               :opt
+               :e))))
+
+  (testing "Verify that nonempty messages are serialized/deserialized correctly"
+    (is (= (empty/new-NonEmpty {:i 3})
+           (-> {:opt {:ne {:i 3}}}
+               empty/new-Selection
+               ->pb
+               empty/pb->Selection
+               :opt
+               :ne))))
+
+  (testing "Verify that unset messages are serialized/deserialized correctly"
+    (is (= (empty/new-Selection {:opt nil})
+           (-> {:opt {}}
+               empty/new-Selection
+               ->pb
+               empty/pb->Selection)))))
+
+(deftest test-empty-field
+  (testing "Verify that empty messages are serialized/deserialized correctly"
+    (is (= (empty/new-Empty {})
+           (-> {:e {}}
+               empty/new-Container
+               ->pb
+               empty/pb->Container
+               :e))))
+
+  (testing "Verify that nonempty messages are serialized/deserialized correctly"
+    (is (= (empty/new-NonEmpty {:i 3})
+           (-> {:ne {:i 3}}
+               empty/new-Container
+               ->pb
+               empty/pb->Container
+               :ne))))
+
+  (testing "Verify that unset messages are serialized/deserialized correctly"
+    (is (= (empty/new-Container {:e nil :ne nil})
+           (-> {}
+               empty/new-Container
+               ->pb
+               empty/pb->Container)))))
+
+(deftest test-empty-simple
+  (testing "Verify that empty messages are serialized/deserialized correctly"
+    (is (= (empty/new-Empty {})
+           (-> {}
+               empty/new-Empty
+               ->pb
+               empty/pb->Empty))))
+
+  (testing "Verify that nonempty messages are serialized/deserialized correctly"
+    (is (= (empty/new-NonEmpty {:i 3})
+           (-> {:i 3}
+               empty/new-NonEmpty
+               ->pb
+               empty/pb->NonEmpty)))))
 
 (deftest test-any-bad-encoding
   (testing "Verify that we gracefully handle an invalid input to Any encoding"
