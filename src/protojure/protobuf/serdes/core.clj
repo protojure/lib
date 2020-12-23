@@ -101,7 +101,6 @@
   (when (some? item)
     (let [data (->pb item)
           len (count data)]
-      (when-not (zero? len)
-        (.writeTag os tag 2);; embedded messages are always type=2 (string)
-        (.writeUInt32NoTag os len)
-        (.writeRawBytes os (bytes data))))))
+      (.writeTag os tag 2);; embedded messages are always type=2 (string)
+      (.writeUInt32NoTag os len)
+      (.writeRawBytes os (bytes data)))))
