@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package com.example.empty;
+
+message Empty {}
+
+message NonEmpty {
+  int32 i = 1;
+}
+
+message Selection {
+  oneof opt {
+    Empty e = 1;
+    NonEmpty ne = 2;
+  }
+}
+
+message Container {
+  Empty e = 1;
+  NonEmpty ne = 2;
+}
