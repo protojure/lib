@@ -122,6 +122,9 @@
   (-> (receive-headers meta-ch)
       (p/then (partial receive-payload codecs meta-ch output-ch output))))
 
+(defn- safe-close! [ch]
+  (some-> ch async/close!))
+
 ;;-----------------------------------------------------------------------------
 ;;-----------------------------------------------------------------------------
 ;; External API
@@ -146,9 +149,9 @@
                                            (throw ex))))
                             (-> (client-receive meta-ch codecs output-ch output)
                                 (p/catch (fn [ex]
-                                           (async/close! output-ch)
+                                           (safe-close! output-ch)
                                            (async/close! meta-ch)
-                                           (async/close! input-ch)
+                                           (safe-close! input-ch)
                                            (throw ex))))])))
           (p/then (fn [[_ status]]
                     (log/trace "GRPC completed:" status)
