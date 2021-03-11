@@ -364,7 +364,7 @@
 
                        ::pedestal/type           protojure.pedestal/config
                        ::pedestal/chain-provider protojure.pedestal/provider}
-        client-params {:port port}]
+        client-params {:port port :idle-timeout -1}]
 
     (let [server (test.utils/start-pedestal-server server-params)
           client @(jetty-client/connect client-params)
@@ -381,7 +381,7 @@
   (test-fn)
   (destroy-service))
 
-(use-fixtures :once wrap-service)
+(use-fixtures :each wrap-service)
 
 ;;-----------------------------------------------------------------------------
 ;; Tests
@@ -583,9 +583,9 @@
           client @(grpc.http2/connect {:uri               (str "http://localhost:" (:port @test-env))
                                        :idle-timeout      1
                                        :input-buffer-size 128})]
-      (try @(test.client/Async client {:id input})
-           (catch Exception e
-             (is (instance? Exception e)))))))
+      (Thread/sleep 2000)
+      (is (thrown? java.util.concurrent.ExecutionException
+                   @(test.client/Async client {:id input}))))))
 
 (deftest test-grpc-metadata
   (testing "Check that connection-metadata is sent to the server"

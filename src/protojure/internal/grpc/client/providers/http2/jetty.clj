@@ -210,7 +210,7 @@
            (.newStream session request-frame p listener)))
         (p/catch (fn [ex]
                    (close-all! meta-ch output-ch)
-                   (p/rejected ex))))))
+                   (throw ex))))))
 
 (defn disconnect [{:keys [^HTTP2Client client] :as context}]
   (log/debug "Disconnecting:" context)
