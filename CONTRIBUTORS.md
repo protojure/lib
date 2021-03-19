@@ -6,3 +6,4 @@
 - Jon Andrews <jon@wevoconversion.com>
 - George Lindsell <glindsell@statestreet.com>
 - Sean Harrap <sean.harrap@gmail.com>
+- Enzzo Cavallo <souenzzo@gmail.com>
