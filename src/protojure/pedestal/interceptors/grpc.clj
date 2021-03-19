@@ -94,7 +94,7 @@
     (-> (p/all (mapv :status [req-ctx resp-ctx]))
         (p/then (fn [_] (async/>!! (:trailers-ch resp-ctx) (generate-trailers response))))
         (p/catch (fn [ex]
-                   (log/error "Pipeline error: " ex)
+                   (log/error :msg "Pipeline" :exception ex)
                    (status/error :internal))))
 
     (update context :response
