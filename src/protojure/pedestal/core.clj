@@ -153,7 +153,8 @@
         (.close ch)
         (recur)))
     (catch Exception e
-      (log/error "close-output-channel error:" (ex-message e))))
+      (log/error :msg "close-output-channel"
+                 :exception e)))
   (log/debug "channel closed" exchange))
 
 (defn- open-input-channel
@@ -291,7 +292,7 @@
                 (try
                   (pedestal.chain/execute {:request request} (cons response-handler interceptors))
                   (catch Exception e
-                    (log/error "unhandled exception:" e)))))))
+                    (log/error :msg "unhandled" :exception e)))))))
 
 (defn- handle-response
   "This function is invoked when the interceptor chain has fully executed and it is now time to
@@ -317,7 +318,7 @@
                 (transmit-body output-ch body)
                 (transmit-trailers exchange trailers)])
         (p/catch (fn [ex]
-                   (log/error "Error:" (with-out-str (pprint ex)))))
+                   (log/error :exception ex)))
         (p/finally (fn []
                      (close-output-channel exchange output-ch)
                      (unsubscribe-close connections exchange)
