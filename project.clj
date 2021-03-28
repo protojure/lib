@@ -1,4 +1,4 @@
-(defproject protojure "1.5.15-SNAPSHOT"
+(defproject protojure "1.6.0-SNAPSHOT"
   :description "Support library for protoc-gen-clojure, providing native Clojure support for Google Protocol Buffers and GRPC applications"
   :url "http://github.com/protojure/library"
   :license {:name "Apache License 2.0"
@@ -15,8 +15,8 @@
                  [com.google.protobuf/protobuf-java "3.15.6" :scope "provided"]
                  [io.undertow/undertow-core "2.2.5.Final" :scope "provided"]
                  [io.undertow/undertow-servlet "2.2.5.Final" :scope "provided"]
-                 [org.eclipse.jetty.http2/http2-client "9.4.38.v20210224" :scope "provided"]
-                 [org.eclipse.jetty/jetty-alpn-java-client "9.4.38.v20210224" :scope "provided"]
+                 [org.eclipse.jetty.http2/http2-client "11.0.1" :scope "provided"]
+                 [org.eclipse.jetty/jetty-alpn-java-client "11.0.1" :scope "provided"]
                  [io.pedestal/pedestal.log "0.5.8" :scope "provided"]
                  [io.pedestal/pedestal.service "0.5.8" :scope "provided"]
                  [org.clojure/tools.logging "1.1.0"]

@@ -59,7 +59,7 @@
 (defn- ->fields
   "converts a map of [string string] name/value attributes to a jetty HttpFields container"
   [headers]
-  (let [fields (new HttpFields)]
+  (let [fields (HttpFields/build)]
     (run! (fn [[k v]] (.put fields ^String k ^String v)) headers)
     fields))
 
@@ -75,7 +75,7 @@
   "Builds a HEADERFRAME representing our request"
   [{:keys [method headers url] :or {method "GET" headers {}} :as request} last?]
   (log/trace "Sending request:" request "ENDFRAME=" last?)
-  (let [_uri (HttpURI. ^String url)]
+  (let [_uri (HttpURI/from ^String url)]
     (as-> (->fields headers) $
       (MetaData$Request. method _uri HttpVersion/HTTP_2 $)
       (HeadersFrame. $ nil last?))))
@@ -115,11 +115,12 @@
             (doseq [b (repeatedly len #(.get data))]
               (async/>!! data-ch (bit-and 0xff b)))) ;; FIXME: cast to byte?
           (when last?
-            (end-stream! stream)))
-        (.succeeded callback))
-      (onFailure [_ stream error reason callback]
-        (stream-log :error stream "FAILURE: " error)
-        (>!! meta-ch {:error {:type :failure :code error :reason reason}})
+            (end-stream! stream))
+          (stream-log :trace stream "Consumed DATA-FRAME (" len " bytes)")
+          (.succeeded callback)))
+      (onFailure [_ stream error reason ex callback]
+        (stream-log :error stream "FAILURE: code-> " error " message-> " (ex-message ex))
+        (>!! meta-ch {:error {:type :failure :code error :reason reason :ex ex}})
         (end-stream! stream)
         (.succeeded callback))
       (onReset [_ stream frame]
