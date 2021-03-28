@@ -594,16 +594,19 @@
       (grpc/disconnect client))))
 
 (deftest test-grpc-exception
-  (testing "Check that exceptions thrown on the server propagate back to the client"
-    (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
+  (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
+    (testing "Check that exceptions thrown on the server propagate back to the client"
       (is (thrown? java.util.concurrent.ExecutionException
                    @(test.client/ShouldThrow client {})))
       (try
         @(test.client/ShouldThrow client {})
+        (assert false)                                      ;; we should never get here
         (catch java.util.concurrent.ExecutionException e
           (let [{:keys [status]} (ex-data (.getCause e))]
-            (is (= status 13)))))
-      (grpc/disconnect client))))
+            (is (= status 13))))))
+    (testing "Check that we can still connect even after exceptions have been received"
+      (is (-> @(test.client/Async client {}) :msg (= "Hello, Async"))))
+    (grpc/disconnect client)))
 
 (deftest test-grpc-async
   (testing "Check that async processing functions correctly"

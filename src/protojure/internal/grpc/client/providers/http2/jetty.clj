@@ -185,7 +185,6 @@
     (log/debug "Connecting with parameters: " params)
     (.setInputBufferSize client input-buffer-size)
     (.setInitialStreamRecvWindow client input-buffer-size)
-    (.setInitialSessionRecvWindow client input-buffer-size)
     (when idle-timeout
       (.setIdleTimeout client idle-timeout))
     (.start client)
