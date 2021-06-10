@@ -99,16 +99,19 @@
 (defn- write-direct-data
   "Used for trivial response bodies, such as String or byte types"
   [^StreamSinkChannel ch data]
-  (p/resolved
-   (do
-     (write-data ch data)
-     (flush ch))))
+  (p/promise
+   (fn [resolve reject]
+     (resolve (do
+                (write-data ch data)
+                (flush ch))))))
 
 (defn- write-streaming-data
   "Used for InputStream type response bodies.  Will chunk the data to avoid
   overburdening the heap"
   [^StreamSinkChannel ch is]
-  (p/resolved (write-data-coll ch (byte-chunk-seq is 65536))))
+  (p/promise
+   (fn [resolve reject]
+     (resolve (write-data-coll ch (byte-chunk-seq is 65536))))))
 
 (defn- write-available-async-data
   "Drains all remaining data from a core.async channel and flushes it to the response channel"
@@ -218,7 +221,9 @@
   (p/resolved true))
 (defmethod transmit-trailers :default
   [exchange trailers]
-  (p/resolved (write-trailers exchange trailers)))
+  (p/promise
+   (fn [resolve reject]
+     (resolve (write-trailers exchange trailers)))))
 
 (defn disconnect! [channel]
   (>!! channel true))
