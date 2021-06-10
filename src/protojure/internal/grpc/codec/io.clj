@@ -2,7 +2,7 @@
 ;;
 ;; SPDX-License-Identifier: Apache-2.0
 
-(ns protojure.internal.grpc.codec.io
+(ns ^:no-doc protojure.internal.grpc.codec.io
   (:require [clojure.core.async :refer [<! >! <!! alt!! go go-loop] :as async]
             [clojure.tools.logging :as log])
   (:import (clojure.core.async.impl.channels ManyToManyChannel)))
