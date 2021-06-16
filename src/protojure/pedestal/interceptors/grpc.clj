@@ -117,8 +117,9 @@
           assoc
           :headers {"Content-Type" "application/grpc+proto"}
           :status 200
-          :body ""
-          :trailers (generate-trailers {:grpc-status status :grpc-message msg})))
+          :body (async/close! (async/chan 1))
+          :trailers (generate-trailers {:grpc-status status :grpc-message msg})
+          :grpc-error true))
 
 (def error-interceptor
   (err/error-dispatch
