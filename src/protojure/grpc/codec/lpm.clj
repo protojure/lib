@@ -10,7 +10,7 @@
             [protojure.grpc.codec.compression :as compression]
             [clojure.tools.logging :as log]
             [clojure.java.io :as io])
-  (:import (protojure.internal.grpc.io InputStream
+  (:import (protojure.io-utils.internal.grpc.io InputStream
                                        OutputStream)
            (java.io ByteArrayOutputStream)
            (org.apache.commons.io.input BoundedInputStream))

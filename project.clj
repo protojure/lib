@@ -10,7 +10,12 @@
             [lein-kibit "0.1.8"]
             [lein-bikeshed "0.5.2"]
             [lein-cloverage "1.2.0"]]
-  :dependencies [[org.clojure/clojure "1.10.3" :scope "provided"]
+  :dependencies [[org.clojure/tools.logging "1.1.0"]
+                 [org.apache.commons/commons-compress "1.20"]
+                 [commons-io/commons-io "2.9.0"]
+                 [funcool/promesa "3.0.0"]
+                 [lambdaisland/uri "1.4.70"]
+                 [org.clojure/clojure "1.10.3" :scope "provided"]
                  [org.clojure/core.async "1.3.618" :scope "provided"]
                  [com.google.protobuf/protobuf-java "3.17.3" :scope "provided"]
                  [io.undertow/undertow-core "2.2.8.Final" :scope "provided"]
@@ -19,13 +24,7 @@
                  [org.eclipse.jetty/jetty-alpn-java-client "11.0.4" :scope "provided"]
                  [io.pedestal/pedestal.log "0.5.9" :scope "provided"]
                  [io.pedestal/pedestal.service "0.5.9" :scope "provided"]
-                 [org.clojure/tools.logging "1.1.0"]
-                 [org.apache.commons/commons-compress "1.20"]
-                 [commons-io/commons-io "2.9.0"]
-                 [funcool/promesa "3.0.0"]
-                 [lambdaisland/uri "1.4.70"]]
-  :aot [protojure.internal.grpc.codec.io
-        protojure.internal.pedestal.io]
+                 [protojure/io-utils "0.1.0"]]
   :codox {:metadata {:doc/format :markdown}
           :namespaces [#"^(?!protojure.internal)"]}
   :profiles {:dev {:dependencies [[protojure/google.protobuf "0.9.1"]
