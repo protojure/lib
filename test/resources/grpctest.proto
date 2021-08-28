@@ -24,7 +24,8 @@ message SimpleResponse {
 }
 
 service TestService {
-    rpc CloseDetect (CloseDetectRequest) returns (stream google.protobuf.Any);
+    rpc ClientCloseDetect (CloseDetectRequest) returns (stream google.protobuf.Any);
+    rpc ServerCloseDetect (google.protobuf.Empty) returns (stream google.protobuf.Any);
     rpc FlowControl (FlowControlRequest) returns (stream FlowControlPayload);
     rpc Metadata (google.protobuf.Empty) returns (SimpleResponse);
     rpc ShouldThrow (google.protobuf.Empty) returns (google.protobuf.Empty);

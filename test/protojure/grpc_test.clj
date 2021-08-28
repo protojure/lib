@@ -153,13 +153,21 @@
       (async/close! grpc-out))
     {:body grpc-out})
 
-  (CloseDetect
+  (ClientCloseDetect
     [_ {{:keys [id]} :grpc-params :keys [grpc-out close-ch] :as request}]
     (go
       (<! close-ch)
       (>! closedetect-ch id)
       (async/close! grpc-out))
-    (:body grpc-out))
+    {:body grpc-out})
+
+  (ServerCloseDetect
+    [_ {:keys [grpc-out close-ch] :as request}]
+    (go
+      (<! (async/timeout 10000))
+      (log/trace "client closing")
+      (async/close! grpc-out))
+    {:body grpc-out})
 
   (Metadata
     [_ request]
@@ -565,16 +573,26 @@
       (Thread/sleep 5000)
       (is (= count (async/<!! (clojure.core.async/reduce (fn [c _] (inc c)) 0 output)))))))
 
-(deftest test-grpc-closedetect
+(deftest test-client-closedetect
   (testing "Check that a streaming server can detect a client disconnect"
     (let [output (async/chan 1)
           client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env)) :input-buffer-size 128})
           input (str (uuid/v4))]
-      (-> (test.client/CloseDetect client {:id input} output)
+      (-> (test.client/ClientCloseDetect client {:id input} output)
           (p/catch (fn [ex])))
       (Thread/sleep 1000)
       (grpc/disconnect client)
       (is (-> (<!! closedetect-ch) (= input))))))
+
+(deftest test-server-closedetect
+  (testing "Check that server streaming severs if the server dies"
+    (let [output (async/chan 1)
+          client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})
+          r (test.client/ServerCloseDetect client {} output)]
+      (async/thread
+        (Thread/sleep 1000)
+        (swap! test-env update :server pedestal/stop))
+      (is (thrown? java.util.concurrent.ExecutionException @r)))))
 
 (deftest client-idle-timeout
   (testing "Check that idle-timeout properly sets client timeout"
