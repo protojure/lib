@@ -37,6 +37,8 @@
 ;-----------------------------------------------------------------------------
 ; Person-PhoneType
 ;-----------------------------------------------------------------------------
+(def Person-PhoneType-default :mobile)
+
 (def Person-PhoneType-val2label {0 :mobile
                                  1 :home
                                  2 :work})
@@ -51,8 +53,10 @@
   {:pre [(or (int? value) (contains? Person-PhoneType-label2val value))]}
   (get Person-PhoneType-label2val value value))
 
-(defn write-Person-PhoneType [tag options value os]
-  (serdes.core/write-Enum tag options (get-Person-PhoneType value) os))
+(defn write-Person-PhoneType
+  ([tag value os] (write-Person-PhoneType tag {:optimize false} value os))
+  ([tag options value os]
+   (serdes.core/write-Enum tag options (get-Person-PhoneType value) os)))
 
 
 
@@ -112,7 +116,7 @@
   [init]
   {:pre [(if (s/valid? ::Person-spec init) true (throw (ex-info "Invalid input" (s/explain-data ::Person-spec init))))]}
   (-> (merge Person-defaults init)
-      (cond-> (contains? init :phones) (update :phones #(map new-Person-PhoneNumber %)))
+      (cond-> (some? (get init :phones)) (update :phones #(map new-Person-PhoneNumber %)))
       (map->Person-record)))
 
 (defn pb->Person
@@ -137,7 +141,7 @@
 (s/def :com.example.addressbook.Person-PhoneNumber/number string?)
 (s/def :com.example.addressbook.Person-PhoneNumber/type (s/or :keyword keyword? :int int?))
 (s/def ::Person-PhoneNumber-spec (s/keys :opt-un [:com.example.addressbook.Person-PhoneNumber/number :com.example.addressbook.Person-PhoneNumber/type]))
-(def Person-PhoneNumber-defaults {:number "" :type (Person-PhoneType-val2label 0)})
+(def Person-PhoneNumber-defaults {:number "" :type Person-PhoneType-default})
 
 (defn cis->Person-PhoneNumber
   "CodedInputStream to Person-PhoneNumber"
@@ -211,7 +215,7 @@
   [init]
   {:pre [(if (s/valid? ::AddressBook-spec init) true (throw (ex-info "Invalid input" (s/explain-data ::AddressBook-spec init))))]}
   (-> (merge AddressBook-defaults init)
-      (cond-> (contains? init :people) (update :people #(map new-Person %)))
+      (cond-> (some? (get init :people)) (update :people #(map new-Person %)))
       (map->AddressBook-record)))
 
 (defn pb->AddressBook
