@@ -159,7 +159,7 @@
       (<! close-ch)
       (>! closedetect-ch id)
       (async/close! grpc-out))
-    (:body grpc-out))
+    {:body grpc-out})
 
   (Metadata
     [_ request]
