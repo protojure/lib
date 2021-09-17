@@ -127,6 +127,18 @@
      (-> (send-unary-params input params)
          (p/then (fn [_] (invoke-unary client desc output)))))))
 
+(defn ReturnErrorStreaming
+  ([client params reply] (ReturnErrorStreaming client {} params reply))
+  ([client metadata params reply]
+   (let [input (async/chan 1)
+         desc {:service "protojure.test.grpc.TestService"
+               :method  "ReturnErrorStreaming"
+               :input   {:f protojure.test.grpc/new-ErrorRequest :ch input}
+               :output  {:f com.google.protobuf/pb->Empty :ch reply}
+               :metadata metadata}]
+     (-> (send-unary-params input params)
+         (p/then (fn [_] (grpc/invoke client desc)))))))
+
 (defn ShouldThrow
   ([client params] (ShouldThrow client {} params))
   ([client metadata params]

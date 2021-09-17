@@ -193,6 +193,10 @@
 
   (ReturnError
     [_ {{:keys [status message]} :grpc-params}]
+    {:grpc-status status :grpc-message message})
+
+  (ReturnErrorStreaming
+    [_ {{:keys [status message]} :grpc-params}]
     {:grpc-status status :grpc-message message}))
 
 (defn- greeter-mock-routes [interceptors]
@@ -684,6 +688,8 @@
       (grpc/disconnect client))))
 
 (deftest test-grpc-error
-  (testing "Check that grpc-status/message works properly"
-    (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
-      (check-throw 16 @(test.client/ReturnError client {:status 16 :message "Oops"})))))
+  (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
+    (testing "Check that grpc-status/message works properly for unary"
+      (check-throw 16 @(test.client/ReturnError client {:status 16 :message "Unary Oops"})))
+    (testing "Check that grpc-status/message works properly for streaming"
+      (check-throw 16 @(test.client/ReturnErrorStreaming client {:status 16 :message "Streaming Oops"} (async/chan 1))))))

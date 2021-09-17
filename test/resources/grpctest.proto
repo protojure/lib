@@ -40,4 +40,5 @@ service TestService {
     rpc AsyncEmpty(google.protobuf.Empty) returns (stream google.protobuf.Empty);
     rpc DeniedStreamer(google.protobuf.Empty) returns (stream google.protobuf.Empty);
     rpc ReturnError(ErrorRequest) returns (google.protobuf.Empty);
+    rpc ReturnErrorStreaming(ErrorRequest) returns (stream google.protobuf.Empty);
 }
