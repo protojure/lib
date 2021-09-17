@@ -23,6 +23,12 @@ message SimpleResponse {
     string msg = 1;
 }
 
+message ErrorRequest {
+    int32 status = 1;
+    string message = 2;
+}
+
+
 service TestService {
     rpc ClientCloseDetect (CloseDetectRequest) returns (stream google.protobuf.Any);
     rpc ServerCloseDetect (google.protobuf.Empty) returns (stream google.protobuf.Any);
@@ -33,4 +39,5 @@ service TestService {
     rpc AllEmpty(google.protobuf.Empty) returns (google.protobuf.Empty);
     rpc AsyncEmpty(google.protobuf.Empty) returns (stream google.protobuf.Empty);
     rpc DeniedStreamer(google.protobuf.Empty) returns (stream google.protobuf.Empty);
+    rpc ReturnError(ErrorRequest) returns (google.protobuf.Empty);
 }

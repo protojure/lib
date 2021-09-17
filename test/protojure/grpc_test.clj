@@ -189,7 +189,11 @@
   (AsyncEmpty
     [_ {:keys [grpc-out]}]
     (async/close! grpc-out)
-    {:body grpc-out}))
+    {:body grpc-out})
+
+  (ReturnError
+    [_ {{:keys [status message]} :grpc-params}]
+    {:grpc-status status :grpc-message message}))
 
 (defn- greeter-mock-routes [interceptors]
   (pedestal.routes/->tablesyntax {:rpc-metadata greeter/rpc-metadata
@@ -678,3 +682,8 @@
       (is (thrown? java.util.concurrent.ExecutionException
                    @(test.client/DeniedStreamer client {} output)))
       (grpc/disconnect client))))
+
+(deftest test-grpc-error
+  (testing "Check that grpc-status/message works properly"
+    (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
+      (check-throw 16 @(test.client/ReturnError client {:status 16 :message "Oops"})))))

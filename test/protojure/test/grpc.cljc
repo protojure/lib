@@ -31,6 +31,9 @@
 (declare cis->SimpleResponse)
 (declare ecis->SimpleResponse)
 (declare new-SimpleResponse)
+(declare cis->ErrorRequest)
+(declare ecis->ErrorRequest)
+(declare new-ErrorRequest)
 
 
 ;;----------------------------------------------------------------------------------
@@ -238,4 +241,55 @@
   (cis->SimpleResponse (serdes.stream/new-cis input)))
 
 (def ^:protojure.protobuf.any/record SimpleResponse-meta {:type "protojure.test.grpc.SimpleResponse" :decoder pb->SimpleResponse})
+
+;-----------------------------------------------------------------------------
+; ErrorRequest
+;-----------------------------------------------------------------------------
+(defrecord ErrorRequest-record [status message]
+  pb/Writer
+  (serialize [this os]
+    (serdes.core/write-Int32 1  {:optimize true} (:status this) os)
+    (serdes.core/write-String 2  {:optimize true} (:message this) os))
+  pb/TypeReflection
+  (gettype [this]
+    "protojure.test.grpc.ErrorRequest"))
+
+(s/def :protojure.test.grpc.ErrorRequest/status int?)
+(s/def :protojure.test.grpc.ErrorRequest/message string?)
+(s/def ::ErrorRequest-spec (s/keys :opt-un [:protojure.test.grpc.ErrorRequest/status :protojure.test.grpc.ErrorRequest/message]))
+(def ErrorRequest-defaults {:status 0 :message ""})
+
+(defn cis->ErrorRequest
+  "CodedInputStream to ErrorRequest"
+  [is]
+  (->> (tag-map ErrorRequest-defaults
+                (fn [tag index]
+                  (case index
+                    1 [:status (serdes.core/cis->Int32 is)]
+                    2 [:message (serdes.core/cis->String is)]
+
+                    [index (serdes.core/cis->undefined tag is)]))
+                is)
+       (map->ErrorRequest-record)))
+
+(defn ecis->ErrorRequest
+  "Embedded CodedInputStream to ErrorRequest"
+  [is]
+  (serdes.core/cis->embedded cis->ErrorRequest is))
+
+(defn new-ErrorRequest
+  "Creates a new instance from a map, similar to map->ErrorRequest except that
+  it properly accounts for nested messages, when applicable.
+  "
+  [init]
+  {:pre [(if (s/valid? ::ErrorRequest-spec init) true (throw (ex-info "Invalid input" (s/explain-data ::ErrorRequest-spec init))))]}
+  (-> (merge ErrorRequest-defaults init)
+      (map->ErrorRequest-record)))
+
+(defn pb->ErrorRequest
+  "Protobuf to ErrorRequest"
+  [input]
+  (cis->ErrorRequest (serdes.stream/new-cis input)))
+
+(def ^:protojure.protobuf.any/record ErrorRequest-meta {:type "protojure.test.grpc.ErrorRequest" :decoder pb->ErrorRequest})
 
