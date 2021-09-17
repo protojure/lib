@@ -222,6 +222,20 @@
   ([port]
    @(grpc.http2/connect {:uri (str "http://localhost:" port) :content-coding "gzip"})))
 
+(defn -check-throw
+  [code f]
+  (is (thrown? java.util.concurrent.ExecutionException
+               (try
+                 (f)
+                 (catch Exception e
+                   (let [{:keys [status]} (.data (ex-cause e))]
+                     (is (= code status)))
+                   (throw e))))))
+
+(defmacro check-throw
+  [code & body]
+  `(-check-throw ~code #(do ~@body)))
+
 ;;-----------------------------------------------------------------------------
 ;; Scaletest Assemblies
 ;;-----------------------------------------------------------------------------
@@ -474,8 +488,8 @@
                 :input {:f example/new-Money :ch input}
                 :output {:f example/pb->Money :ch output}}]
       @(client.utils/send-unary-params input nil)
-      (is (thrown? java.util.concurrent.ExecutionException
-                   @(client.utils/invoke-unary client desc output))))))
+      (check-throw 16
+                   @(client.utils/invoke-unary client desc output)))))
 
 (deftest streaming-grpc-check
   (testing "Check that a round-trip streaming GRPC request works"
