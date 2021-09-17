@@ -39,6 +39,19 @@
      (-> (send-unary-params input params)
          (p/then (fn [_] (grpc/invoke client desc)))))))
 
+(defn ReturnError
+  ([client params] (ReturnError client {} params))
+  ([client metadata params]
+   (let [input (async/chan 1)
+         output (async/chan 1)
+         desc {:service "protojure.test.grpc.TestService"
+               :method  "ReturnError"
+               :input   {:f protojure.test.grpc/new-ErrorRequest :ch input}
+               :output  {:f com.google.protobuf/pb->Empty :ch output}
+               :metadata metadata}]
+     (-> (send-unary-params input params)
+         (p/then (fn [_] (invoke-unary client desc output)))))))
+
 (defn AllEmpty
   ([client params] (AllEmpty client {} params))
   ([client metadata params]
