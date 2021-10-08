@@ -314,8 +314,10 @@
 
   ;; Set Response Headers
   (let [ctx (.getResponseHeaders exchange)]
-    (doseq [[k v] headers]
-      (.put ctx (HttpString. ^String k) ^String v)))
+    (doseq [[^String k ^String v] headers]
+      (cond
+        (string? v) (.put ctx (HttpString. k) v)
+        (coll? v) (.putAll ctx (HttpString. k) v))))
 
   ;; Start asynchronous output
   (let [output-ch (open-output-channel exchange)]
