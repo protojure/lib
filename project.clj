@@ -26,6 +26,7 @@
                  [lambdaisland/uri "1.4.70"]]
   :aot [protojure.internal.grpc.codec.io
         protojure.internal.pedestal.io]
+  :jar-exclusions [#"^(?!(protojure))"]
   :codox {:metadata {:doc/format :markdown}
           :namespaces [#"^(?!protojure.internal)"]}
   :profiles {:dev {:dependencies [[protojure/google.protobuf "0.9.1"]
