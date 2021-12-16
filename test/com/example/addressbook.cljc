@@ -54,8 +54,6 @@
 (defn write-Person-PhoneType [tag options value os]
   (serdes.core/write-Enum tag options (get-Person-PhoneType value) os))
 
-
-
 ;;----------------------------------------------------------------------------------
 ;;----------------------------------------------------------------------------------
 ;; Message Implementations
@@ -65,7 +63,6 @@
 ;-----------------------------------------------------------------------------
 ; Person
 ;-----------------------------------------------------------------------------
-
 
 (defrecord Person-record [name id email phones]
   pb/Writer
