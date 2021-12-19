@@ -36,7 +36,7 @@
           name (keyword fqs (str method "-handler"))
           handler (handler name (partial method-fn callback-context))]
       [(str "/" fqs "/" method)
-       :post (-> (consv grpc/error-interceptor interceptors)
+       :post (-> (vec (concat [grpc.web/error-interceptor grpc/error-interceptor] interceptors))
                  (conj grpc.web/proxy
                        (grpc/route-interceptor rpc)
                        handler))
