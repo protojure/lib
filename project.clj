@@ -19,7 +19,7 @@
                  [org.eclipse.jetty/jetty-alpn-java-client "11.0.7"]
                  [io.pedestal/pedestal.log "0.5.9"]
                  [io.pedestal/pedestal.service "0.5.9"]
-                 [org.clojure/tools.logging "1.2.2"]
+                 [org.clojure/tools.logging "1.2.3"]
                  [org.apache.commons/commons-compress "1.21"]
                  [commons-io/commons-io "2.11.0"]
                  [funcool/promesa "3.0.0"]
