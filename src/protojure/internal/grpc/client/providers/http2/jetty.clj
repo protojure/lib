@@ -3,7 +3,7 @@
 ;; SPDX-License-Identifier: Apache-2.0
 
 (ns protojure.internal.grpc.client.providers.http2.jetty
-  (:require [promesa.core :as p]
+  (:require [protojure.promesa :as p]
             [clojure.core.async :refer [>!! <!! <! >! go go-loop] :as async]
             [clojure.tools.logging :as log])
   (:import (java.net InetSocketAddress)
@@ -35,7 +35,7 @@
 (defn- jetty-promise
   "converts a jetty promise to promesa"
   [f]
-  (p/promise
+  (p/create
    (fn [resolve reject]
      (let [p (reify Promise
                (succeeded [_ result]
@@ -47,7 +47,7 @@
 (defn- jetty-callback-promise
   "converts a jetty 'callback' to promesa"
   [f]
-  (p/promise
+  (p/create
    (fn [resolve reject]
      (let [cb (reify Callback
                 (succeeded [_]
@@ -157,7 +157,7 @@
   "Creates DATA frames from the buffers on the channel"
   [input stream]
   (if (some? input)
-    (p/promise
+    (p/create
      (fn [resolve reject]
        (go-loop []
          (if-let [frame (<! input)]

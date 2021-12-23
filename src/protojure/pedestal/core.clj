@@ -11,7 +11,7 @@
             [clojure.string :as string]
             [clojure.pprint :refer [pprint]]
             [clojure.core.async :refer [go-loop <!! <! go chan >!! >! close! timeout poll! promise-chan]]
-            [promesa.core :as p]
+            [protojure.promesa :as p]
             [clojure.java.io :as io]
             [protojure.pedestal.ssl :as ssl])
   (:import (io.undertow.server HttpHandler
@@ -99,7 +99,7 @@
 (defn- write-direct-data
   "Used for trivial response bodies, such as String or byte types"
   [^StreamSinkChannel ch data]
-  (p/promise
+  (p/create
    (fn [resolve reject]
      (resolve (do
                 (write-data ch data)
@@ -109,7 +109,7 @@
   "Used for InputStream type response bodies.  Will chunk the data to avoid
   overburdening the heap"
   [^StreamSinkChannel ch is]
-  (p/promise
+  (p/create
    (fn [resolve reject]
      (resolve (write-data-coll ch (byte-chunk-seq is 65536))))))
 
@@ -122,7 +122,7 @@
   "Used for core.async type response bodies.  Each message received is assumed
   to represent a data frame and thus will be flushed"
   [^StreamSinkChannel output-ch input-ch]
-  (p/promise
+  (p/create
    (fn [resolve reject]
      (write-available-async-data output-ch input-ch)
      (go
@@ -164,7 +164,7 @@
   "Receives request body as a callback and puts the bytes on a core.async channel"
   [exchange ch]
   (let [receiver (.getRequestReceiver ^HttpServerExchange exchange)]
-    (p/promise
+    (p/create
      (fn [resolve reject]
        (.receivePartialBytes receiver
                              (reify Receiver$PartialBytesCallback
@@ -212,7 +212,7 @@
   (fn [exchange trailers] (type trailers)))
 (defmethod transmit-trailers clojure.core.async.impl.channels.ManyToManyChannel
   [exchange trailers]
-  (p/promise
+  (p/create
    (fn [resolve reject]
      (go
        (resolve (write-trailers exchange (<! trailers)))))))
@@ -221,7 +221,7 @@
   (p/resolved true))
 (defmethod transmit-trailers :default
   [exchange trailers]
-  (p/promise
+  (p/create
    (fn [resolve reject]
      (resolve (write-trailers exchange trailers)))))
 
@@ -326,7 +326,7 @@
                 (transmit-trailers exchange trailers)])
         (p/catch (fn [ex]
                    (log/error :exception ex)))
-        (p/finally (fn []
+        (p/finally (fn [_ _]
                      (close-output-channel exchange output-ch)
                      (unsubscribe-close connections exchange)
                      (.endExchange exchange))))))

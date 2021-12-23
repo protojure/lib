@@ -5,7 +5,7 @@
 (ns protojure.grpc.codec.lpm
   "Utility functions for GRPC [length-prefixed-message](https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md#requests) encoding."
   (:require [clojure.core.async :refer [<! >! go go-loop] :as async]
-            [promesa.core :as p]
+            [protojure.promesa :as p]
             [protojure.protobuf :refer [->pb]]
             [protojure.grpc.codec.compression :as compression]
             [clojure.tools.logging :as log]
@@ -134,7 +134,7 @@ The value for the **content-coding** option must be one of
   (let [is (InputStream. {:ch input :tmo tmo})
         decompressor (when (and (some? content-coding) (not= content-coding "identity"))
                        (compression/decompressor codecs content-coding))]
-    (p/promise
+    (p/create
      (fn [resolve reject]
        (go
          (try
@@ -227,7 +227,7 @@ The _max-frame-size_ option dictates how bytes are encoded on the _output_ chann
   (let [os (OutputStream. {:ch output :max-frame-size max-frame-size})
         compressor (when (and (some? content-coding) (not= content-coding "identity"))
                      (compression/compressor codecs content-coding))]
-    (p/promise
+    (p/create
      (fn [resolve reject]
        (go
          (try

@@ -22,7 +22,7 @@
                  [org.clojure/tools.logging "1.2.3"]
                  [org.apache.commons/commons-compress "1.21"]
                  [commons-io/commons-io "2.11.0"]
-                 [funcool/promesa "3.0.0"]
+                 [funcool/promesa "6.0.2"]
                  [lambdaisland/uri "1.12.89"]]
   :aot [protojure.internal.grpc.codec.io
         protojure.internal.pedestal.io]
