@@ -8,7 +8,7 @@
             [com.google.protobuf :as com.google.protobuf]
             [clojure.core.async :as async]
             [protojure.grpc.client.utils :refer [send-unary-params invoke-unary]]
-            [promesa.core :as p]
+            [protojure.promesa :as p]
             [protojure.grpc.client.api :as grpc]))
 
 ;-----------------------------------------------------------------------------

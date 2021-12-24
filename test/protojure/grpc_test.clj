@@ -7,7 +7,7 @@
   (:require [clojure.test :refer :all]
             [clojure.string :as string]
             [clojure.core.async :refer [<!! >!! <! >! go go-loop] :as async]
-            [promesa.core :as p]
+            [protojure.promesa :as p]
             [io.pedestal.http :as pedestal]
             [io.pedestal.http.body-params :as body-params]
             [io.pedestal.interceptor :refer [interceptor]]
@@ -327,7 +327,7 @@
 ;; Synchronous send-request helpers
 ;;------------------------------------------------------------------------------------
 (defn- receive-metadata [ch]
-  (p/promise
+  (p/create
    (fn [resolve reject]
      (go-loop [response {}]
        (if-let [data (<! ch)]
@@ -335,7 +335,7 @@
          (resolve response))))))
 
 (defn- receive-body [ch]
-  (p/promise
+  (p/create
    (fn [resolve reject]
      (go-loop [body []]
        (if-let [data (<! ch)]
