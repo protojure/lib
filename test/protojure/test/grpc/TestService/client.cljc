@@ -8,12 +8,25 @@
             [com.google.protobuf :as com.google.protobuf]
             [clojure.core.async :as async]
             [protojure.grpc.client.utils :refer [send-unary-params invoke-unary]]
-            [protojure.promesa :as p]
+            [promesa.core :as p]
             [protojure.grpc.client.api :as grpc]))
 
 ;-----------------------------------------------------------------------------
 ; GRPC Client Implementation
 ;-----------------------------------------------------------------------------
+
+(defn BandwidthTest
+  ([client params] (BandwidthTest client {} params))
+  ([client metadata params]
+   (let [input (async/chan 1)
+         output (async/chan 1)
+         desc {:service "protojure.test.grpc.TestService"
+               :method  "BandwidthTest"
+               :input   {:f protojure.test.grpc/new-BigPayload :ch input}
+               :output  {:f protojure.test.grpc/pb->BigPayload :ch output}
+               :metadata metadata}]
+     (-> (send-unary-params input params)
+         (p/then (fn [_] (invoke-unary client desc output)))))))
 
 (defn ClientCloseDetect
   ([client params reply] (ClientCloseDetect client {} params reply))
