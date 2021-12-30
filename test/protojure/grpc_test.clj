@@ -347,13 +347,33 @@
          (recur (merge response data))
          (resolve response))))))
 
+(defn concat-byte-arrays [& byte-arrays]
+  (when (not-empty byte-arrays)
+    (let [total-size (reduce + (map count byte-arrays))
+          result     (byte-array total-size)
+          bb         (ByteBuffer/wrap result)]
+      (doseq [ba byte-arrays]
+        (.put bb ba))
+      result)))
+
+(defn ->bytes [^ByteBuffer src]
+  (let [len (.remaining src)
+        dst (byte-array len)]
+    (.get src dst)
+    dst))
+
+(defn byte-conj
+  [coll buf]
+  (let [b (->bytes buf)]
+    (concat-byte-arrays coll b)))
+
 (defn- receive-body [ch]
   (p/create
    (fn [resolve reject]
-     (go-loop [body []]
+     (go-loop [body (byte-array 0)]
        (if-let [data (<! ch)]
-         (recur (conj body data))
-         (resolve (byte-array body)))))))
+         (recur (byte-conj body data))
+         (resolve body))))))
 
 (defn send-request-sync
   [context {:keys [body] :as request}]
@@ -363,7 +383,7 @@
 
     (go
       (when (some? body)
-        (>! ic body))
+        (>! ic (ByteBuffer/wrap body)))
       (async/close! ic))
 
     @(-> (p/all [(-> (jetty-client/send-request context (assoc request :input-ch ic :meta-ch mc :output-ch oc))
@@ -728,3 +748,4 @@
 (deftest test-bidi-bandwidth
   (testing "Check bidi bandwidth of e2e"
     (test-bandwidth :mode-bidi)))
+

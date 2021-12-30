@@ -26,15 +26,15 @@ A map with the following entries:
 | **uri**               | _String_ | n/a     | The URI of the GRPC server                                                |
 | **codecs**            | _map_    | [[protojure.grpc.codec.core/builtin-codecs]] | Optional custom codecs               |
 | **content-coding**    | _String_ | nil     | The encoding to use on request data                                       |
-| **max-frame-size**    | _UInt32_ | 16384   | The maximum HTTP2 DATA frame size                                         |
-| **input-buffer-size** | _UInt32_ | 16M     | The input-buffer size                                                     |
+| **max-frame-size**    | _UInt32_ | 16KB    | The maximum HTTP2 DATA frame size                                         |
+| **input-buffer-size** | _UInt32_ | 1MB     | The input-buffer size                                                     |
 | **metadata**          | _map_    | n/a     | Optional [string string] tuples that will be submitted as attributes to the request, such as via HTTP headers for GRPC-HTTP2 |
 
 #### Return value
 A promise that, on success, evaluates to an instance of [[api/Provider]].
 _(api/disconnect)_ should be used to release any resources when the connection is no longer required.
   "
-  [{:keys [uri codecs content-coding max-frame-size input-buffer-size metadata idle-timeout ssl] :or {codecs builtin-codecs max-frame-size 16384 input-buffer-size 16384 ssl false} :as params}]
+  [{:keys [uri codecs content-coding max-frame-size input-buffer-size metadata idle-timeout ssl] :or {codecs builtin-codecs max-frame-size 16384 input-buffer-size jetty/default-input-buffer ssl false} :as params}]
   (log/debug "Connecting with GRPC-HTTP2:" params)
   (let [{:keys [host port]} (lambdaisland/uri uri)]
     (-> (jetty/connect {:host host :port (Integer/parseInt port) :input-buffer-size input-buffer-size :idle-timeout idle-timeout :ssl ssl})

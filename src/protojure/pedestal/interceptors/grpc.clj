@@ -11,7 +11,8 @@
             [io.pedestal.interceptor :as pedestal]
             [io.pedestal.interceptor.error :as err]
             [io.pedestal.log :as log]
-            [protojure.grpc.status :as grpc.status]))
+            [protojure.grpc.status :as grpc.status])
+  (:import [java.nio ByteBuffer]))
 
 (set! *warn-on-reflection* true)
 

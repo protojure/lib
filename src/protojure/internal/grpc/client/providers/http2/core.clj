@@ -140,7 +140,8 @@
   (invoke [_ {:keys [input output] :as params}]
     (let [input-ch (input-pipeline input codecs content-coding max-frame-size)
           meta-ch (async/chan 32)
-          output-ch (when (some? output) (async/chan input-buffer-size))]
+          output-ch (when (some? output) (async/chan (max 32
+                                                          (/ input-buffer-size max-frame-size))))]
       (-> (send-request context uri codecs content-coding metadata params input-ch meta-ch output-ch)
           (p/then (fn [stream]
                     (p/all [(-> (client-send input-ch stream)

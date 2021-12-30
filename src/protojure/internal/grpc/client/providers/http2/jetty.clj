@@ -111,12 +111,12 @@
               len (.remaining data)
               last? (.isEndStream ^DataFrame frame)]
           (stream-log :trace stream "Received DATA-FRAME (" len " bytes) ENDFRAME=" last?)
-          (when (some? data-ch)
-            (doseq [b (repeatedly len #(.get data))]
-              (async/>!! data-ch (bit-and 0xff b)))) ;; FIXME: cast to byte?
+          (when (and (some? data-ch) (pos? len))
+            (let [clone (ByteBuffer/allocate len)]
+              (.put clone data)
+              (async/>!! data-ch (.flip clone))))
           (when last?
             (end-stream! stream))
-          (stream-log :trace stream "Consumed DATA-FRAME (" len " bytes)")
           (.succeeded callback)))
       (onFailure [_ stream error reason ex callback]
         (stream-log :error stream "FAILURE: code-> " error " message-> " (ex-message ex))
@@ -141,17 +141,19 @@
   "Transmits a single DATA frame"
   ([stream data]
    (transmit-data-frame stream data false 0))
-  ([^Stream stream data last? padding]
-   (stream-log :trace stream "Sending DATA-FRAME with " (count data) " bytes, ENDFRAME=" last?)
+  ([^Stream stream ^ByteBuffer data last? padding]
+   (stream-log :trace stream "Sending DATA-FRAME with " (.remaining data) " bytes, ENDFRAME=" last?)
    @(jetty-callback-promise
      (fn [cb]
-       (let [frame (DataFrame. (.getId stream) (ByteBuffer/wrap data) last? padding)]
+       (let [frame (DataFrame. (.getId stream) data last? padding)]
          (.data stream frame cb))))))
+
+(def empty-data (ByteBuffer/wrap (byte-array 0)))
 
 (defn- transmit-eof
   "Transmits an empty DATA frame with the ENDSTREAM flag set to true, signifying the end of stream"
   [stream]
-  (transmit-data-frame stream (byte-array 0) true 0))
+  (transmit-data-frame stream empty-data true 0))
 
 (defn transmit-data-frames
   "Creates DATA frames from the buffers on the channel"
@@ -177,7 +179,9 @@
 ;; Exposed API
 ;;------------------------------------------------------------------------------------
 
-(defn connect [{:keys [host port input-buffer-size idle-timeout ssl] :or {host "localhost" port 80 input-buffer-size 16384 ssl false} :as params}]
+(def ^:const default-input-buffer (* 1024 1024))
+
+(defn connect [{:keys [host port input-buffer-size idle-timeout ssl] :or {host "localhost" input-buffer-size default-input-buffer port 80 ssl false} :as params}]
   (let [client (HTTP2Client.)
         address (InetSocketAddress. ^String host (int port))
         listener (ServerSessionListener$Adapter.)

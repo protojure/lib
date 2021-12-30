@@ -10,7 +10,8 @@
             [protojure.pedestal.core :as protojure.pedestal]
             [protojure.test.utils :as test.utils]
             [clj-http.client :as client]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io])
+  (:import [java.nio ByteBuffer]))
 
 ;;-----------------------------------------------------------------------------
 ;; Data
@@ -159,8 +160,7 @@
           test-channel (async/chan 8096)
           in-stream (protojure.pedestal.io.InputStream. test-channel)
           buff (byte-array 5)]
-      (doseq [b (.getBytes test-string)]
-        (>!! test-channel b))
+      (>!! test-channel (ByteBuffer/wrap (.getBytes test-string)))
       (async/close! test-channel)
       (.read in-stream buff 0 5)
       (is (= "Hello" (String. buff))))))
