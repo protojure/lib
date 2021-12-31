@@ -81,10 +81,15 @@
       (.awaitWritable ch)
       (-write ch buf bytes-remain))))
 
-(defn- write-data
+(defmulti write-data
   "Writes the provided bytes to the undertow response channel"
+  (fn [ch data] (type data)))
+(defmethod write-data (Class/forName "[B")
   [^StreamSinkChannel ch data]
   (-write ch (ByteBuffer/wrap data) (count data)))
+(defmethod write-data ByteBuffer
+  [^StreamSinkChannel ch ^ByteBuffer data]
+  (-write ch data (.remaining data)))
 
 (defn- flush
   [^StreamSinkChannel ch]
@@ -170,8 +175,8 @@
                              (reify Receiver$PartialBytesCallback
                                (handle [this exchange message last]
                                  (.pause receiver)
-                                 (doseq [b (seq message)]
-                                   (>!! ch (bit-and 0xff b)))
+                                 (when-not (empty? message)
+                                   (>!! ch (ByteBuffer/wrap message)))
                                  (when last
                                    (close! ch)
                                    (resolve true))

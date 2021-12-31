@@ -30,7 +30,10 @@
             [example.hello.Greeter :as greeter]
             [protojure.test.grpc.TestService.server :as test.server]
             [protojure.test.grpc.TestService.client :as test.client]
-            [protojure.internal.grpc.client.providers.http2.jetty :as jetty])
+            [protojure.internal.grpc.client.providers.http2.jetty :as jetty]
+            [crypto.random :as crypto]
+            [criterium.core :as criterium])
+  (:import [java.nio ByteBuffer])
   (:refer-clojure :exclude [resolve]))
 
 (log/set-config! {:level :error
@@ -48,6 +51,11 @@
                     "bar" "bat"})
 
 (def closedetect-ch (async/chan 1))
+
+(def bandwidth-payload (crypto/bytes 1000000))
+
+(def upload-types #{:mode-bidi :mode-upload})
+(def download-types #{:mode-bidi :mode-download})
 
 ;;-----------------------------------------------------------------------------
 ;; Mock endpoint
@@ -197,7 +205,12 @@
 
   (ReturnErrorStreaming
     [_ {{:keys [status message]} :grpc-params}]
-    {:grpc-status status :grpc-message message}))
+    {:grpc-status status :grpc-message message})
+
+  (BandwidthTest
+    [_ {{:keys [mode]} :grpc-params}]
+    (cond-> {}
+      (contains? download-types mode) (assoc-in [:body :data] bandwidth-payload))))
 
 (defn- greeter-mock-routes [interceptors]
   (pedestal.routes/->tablesyntax {:rpc-metadata greeter/rpc-metadata
@@ -334,13 +347,33 @@
          (recur (merge response data))
          (resolve response))))))
 
+(defn concat-byte-arrays [& byte-arrays]
+  (when (not-empty byte-arrays)
+    (let [total-size (reduce + (map count byte-arrays))
+          result     (byte-array total-size)
+          bb         (ByteBuffer/wrap result)]
+      (doseq [ba byte-arrays]
+        (.put bb ba))
+      result)))
+
+(defn ->bytes [^ByteBuffer src]
+  (let [len (.remaining src)
+        dst (byte-array len)]
+    (.get src dst)
+    dst))
+
+(defn byte-conj
+  [coll buf]
+  (let [b (->bytes buf)]
+    (concat-byte-arrays coll b)))
+
 (defn- receive-body [ch]
   (p/create
    (fn [resolve reject]
-     (go-loop [body []]
+     (go-loop [body (byte-array 0)]
        (if-let [data (<! ch)]
-         (recur (conj body data))
-         (resolve (byte-array body)))))))
+         (recur (byte-conj body data))
+         (resolve body))))))
 
 (defn send-request-sync
   [context {:keys [body] :as request}]
@@ -350,7 +383,7 @@
 
     (go
       (when (some? body)
-        (>! ic body))
+        (>! ic (ByteBuffer/wrap body)))
       (async/close! ic))
 
     @(-> (p/all [(-> (jetty-client/send-request context (assoc request :input-ch ic :meta-ch mc :output-ch oc))
@@ -693,3 +726,26 @@
       (check-throw 16 @(test.client/ReturnError client {:status 16 :message "Unary Oops"})))
     (testing "Check that grpc-status/message works properly for streaming"
       (check-throw 16 @(test.client/ReturnErrorStreaming client {:status 16 :message "Streaming Oops"} (async/chan 1))))))
+
+(defn test-bandwidth
+  [mode]
+  (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
+    (time @(test.client/BandwidthTest client (cond-> {:mode mode}
+                                               (contains? upload-types mode) (assoc :data bandwidth-payload))))))
+
+(deftest test-upload-bandwidth
+  (testing "Check upload bandwidth of e2e"
+    (test-bandwidth :mode-upload)))
+
+(deftest test-download-bandwidth
+  (testing "Check download bandwidth of e2e"
+    (-> (test-bandwidth :mode-download)
+        :data
+        count
+        (str " bytes")
+        (println))))
+
+(deftest test-bidi-bandwidth
+  (testing "Check bidi bandwidth of e2e"
+    (test-bandwidth :mode-bidi)))
+

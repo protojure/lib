@@ -11,6 +11,7 @@
 ; GRPC TestService
 ;-----------------------------------------------------------------------------
 (defprotocol Service
+  (BandwidthTest [this param])
   (ClientCloseDetect [this param])
   (FlowControl [this param])
   (ReturnError [this param])
@@ -23,6 +24,9 @@
   (ReturnErrorStreaming [this param])
   (ShouldThrow [this param]))
 
+(defn- BandwidthTest-dispatch
+  [ctx request]
+  (BandwidthTest ctx request))
 (defn- ClientCloseDetect-dispatch
   [ctx request]
   (ClientCloseDetect ctx request))
@@ -58,7 +62,8 @@
   (ShouldThrow ctx request))
 
 (def ^:const rpc-metadata
-  [{:pkg "protojure.test.grpc" :service "TestService" :method "ClientCloseDetect" :method-fn ClientCloseDetect-dispatch :server-streaming true :client-streaming false :input pb->CloseDetectRequest :output com.google.protobuf/new-Any}
+  [{:pkg "protojure.test.grpc" :service "TestService" :method "BandwidthTest" :method-fn BandwidthTest-dispatch :server-streaming false :client-streaming false :input pb->BigPayload :output new-BigPayload}
+   {:pkg "protojure.test.grpc" :service "TestService" :method "ClientCloseDetect" :method-fn ClientCloseDetect-dispatch :server-streaming true :client-streaming false :input pb->CloseDetectRequest :output com.google.protobuf/new-Any}
    {:pkg "protojure.test.grpc" :service "TestService" :method "FlowControl" :method-fn FlowControl-dispatch :server-streaming true :client-streaming false :input pb->FlowControlRequest :output new-FlowControlPayload}
    {:pkg "protojure.test.grpc" :service "TestService" :method "ReturnError" :method-fn ReturnError-dispatch :server-streaming false :client-streaming false :input pb->ErrorRequest :output com.google.protobuf/new-Empty}
    {:pkg "protojure.test.grpc" :service "TestService" :method "AllEmpty" :method-fn AllEmpty-dispatch :server-streaming false :client-streaming false :input com.google.protobuf/pb->Empty :output com.google.protobuf/new-Empty}
