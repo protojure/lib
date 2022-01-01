@@ -3,7 +3,8 @@
 ;; SPDX-License-Identifier: Apache-2.0
 
 (ns protojure.grpc.codec.compression
-  (:import (org.apache.commons.compress.compressors.gzip GzipCompressorInputStream
+  (:import (java.io InputStream OutputStream)
+           (org.apache.commons.compress.compressors.gzip GzipCompressorInputStream
                                                          GzipCompressorOutputStream
                                                          GzipParameters)
            (org.apache.commons.compress.compressors.snappy FramedSnappyCompressorInputStream
@@ -18,16 +19,16 @@
 ;;--------------------------------------------------------------------------------------
 (def ^:no-doc _builtin-codecs
   [{:name   "gzip"
-    :input  #(GzipCompressorInputStream. %)
-    :output #(let [params (GzipParameters.)] (.setCompressionLevel params 9) (GzipCompressorOutputStream. % params))}
+    :input  #(GzipCompressorInputStream. ^InputStream %)
+    :output #(let [params (GzipParameters.)] (.setCompressionLevel params 9) (GzipCompressorOutputStream. ^OutputStream % params))}
 
    {:name   "snappy"
-    :input  #(FramedSnappyCompressorInputStream. %)
-    :output #(FramedSnappyCompressorOutputStream. %)}
+    :input  #(FramedSnappyCompressorInputStream. ^InputStream %)
+    :output #(FramedSnappyCompressorOutputStream. ^OutputStream %)}
 
    {:name   "deflate"
-    :input  #(DeflateCompressorInputStream. %)
-    :output #(DeflateCompressorOutputStream. %)}])
+    :input  #(DeflateCompressorInputStream. ^InputStream %)
+    :output #(DeflateCompressorOutputStream. ^OutputStream %)}])
 
 (def builtin-codecs
   "
@@ -82,6 +83,6 @@ simplistic demonstration.  A functional \"pass through\" example could be built 
     (get-codec-by-polarity factory polarity)
     (throw (ex-info "Unknown CODEC name" {:name type :polarity polarity}))))
 
-(defn ^:no-doc compressor [codecs type] (get-codec codecs type :output))
-(defn ^:no-doc decompressor [codecs type] (get-codec codecs type :input))
+(defn ^:no-doc compressor ^OutputStream [codecs type] (get-codec codecs type :output))
+(defn ^:no-doc decompressor ^InputStream [codecs type] (get-codec codecs type :input))
 

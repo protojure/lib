@@ -50,14 +50,13 @@
       0)))
 
 (defn read-impl
-  [this b off len]
+  [^protojure.internal.grpc.io.InputStream this b off len]
   (let [ctx (.state this)
         buf (get-buffer ctx)]
     (if (some? buf)
       (let [len (min len (.remaining buf))]
         (when (pos? len)
           (.get buf b off len))
-        (log/debug "read:" len "bytes" (.remaining buf) "remain")
         len)
       -1)))
 
