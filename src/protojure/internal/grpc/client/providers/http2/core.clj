@@ -10,6 +10,7 @@
             [protojure.grpc.codec.lpm :as lpm]
             [protojure.internal.grpc.client.providers.http2.jetty :as jetty]
             [protojure.promesa :as p])
+  (:import (org.eclipse.jetty.http2.api Stream))
   (:refer-clojure :exclude [resolve]))
 
 (set! *warn-on-reflection* true)
@@ -143,10 +144,9 @@
           output-ch (when (some? output) (async/chan (max 32
                                                           (/ input-buffer-size max-frame-size))))]
       (-> (send-request context uri codecs content-coding metadata params input-ch meta-ch output-ch)
-          (p/then (fn [stream]
+          (p/then (fn [^Stream stream]
                     (p/all [(-> (client-send input-ch stream)
                                 (p/catch (fn [ex]
-                                           (.close stream)
                                            (throw ex))))
                             (-> (client-receive meta-ch codecs output-ch output)
                                 (p/catch (fn [ex]

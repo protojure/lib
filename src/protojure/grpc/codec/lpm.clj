@@ -61,7 +61,8 @@
 ;;--------------------------------------------------------------------------------------
 ;; Decoder
 ;;--------------------------------------------------------------------------------------
-(defn- decoder-stream [is compressed? decompressor]
+(defn- decoder-stream
+  ^InputStream [is compressed? decompressor]
   (if (and compressed? (some? decompressor))
     (decompressor is)
     is))
@@ -178,10 +179,10 @@ The value for the **content-coding** option must be one of
         len (count buf)]
     (encode-buffer buf len false os)))
 
-(defn- compress-buffer [compressor buf]
+(defn- compress-buffer [compressor ^bytes buf]
   (let [os (ByteArrayOutputStream.)]
     (with-open [cos (compressor os)]
-      (io/copy buf cos))
+      (io/copy buf ^OutputStream cos))
     (.toByteArray os)))
 
 (defn- encode-maybe-compressed
