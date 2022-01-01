@@ -59,7 +59,7 @@
 (defn- ->fields
   "converts a map of [string string] name/value attributes to a jetty HttpFields container"
   [headers]
-  (let [fields (HttpFields/build)]
+  (let [fields (new HttpFields)]
     (run! (fn [[k v]] (.put fields ^String k ^String v)) headers)
     fields))
 
@@ -75,7 +75,7 @@
   "Builds a HEADERFRAME representing our request"
   [{:keys [method headers url] :or {method "GET" headers {}} :as request} last?]
   (log/trace "Sending request:" request "ENDFRAME=" last?)
-  (let [_uri (HttpURI/from ^String url)]
+  (let [_uri (HttpURI. ^String url)]
     (as-> (->fields headers) $
       (MetaData$Request. method _uri HttpVersion/HTTP_2 $)
       (HeadersFrame. $ nil last?))))
