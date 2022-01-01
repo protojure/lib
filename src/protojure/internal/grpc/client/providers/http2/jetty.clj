@@ -3,7 +3,7 @@
 ;; SPDX-License-Identifier: Apache-2.0
 
 (ns protojure.internal.grpc.client.providers.http2.jetty
-  (:require [promesa.core :as p]
+  (:require [protojure.promesa :as p]
             [clojure.core.async :refer [>!! <!! <! >! go go-loop] :as async]
             [clojure.tools.logging :as log])
   (:import (java.net InetSocketAddress)
@@ -35,7 +35,7 @@
 (defn- jetty-promise
   "converts a jetty promise to promesa"
   [f]
-  (p/promise
+  (p/create
    (fn [resolve reject]
      (let [p (reify Promise
                (succeeded [_ result]
@@ -47,7 +47,7 @@
 (defn- jetty-callback-promise
   "converts a jetty 'callback' to promesa"
   [f]
-  (p/promise
+  (p/create
    (fn [resolve reject]
      (let [cb (reify Callback
                 (succeeded [_]
@@ -59,7 +59,7 @@
 (defn- ->fields
   "converts a map of [string string] name/value attributes to a jetty HttpFields container"
   [headers]
-  (let [fields (new HttpFields)]
+  (let [fields (HttpFields/build)]
     (run! (fn [[k v]] (.put fields ^String k ^String v)) headers)
     fields))
 
@@ -75,7 +75,7 @@
   "Builds a HEADERFRAME representing our request"
   [{:keys [method headers url] :or {method "GET" headers {}} :as request} last?]
   (log/trace "Sending request:" request "ENDFRAME=" last?)
-  (let [_uri (HttpURI. ^String url)]
+  (let [_uri (HttpURI/from ^String url)]
     (as-> (->fields headers) $
       (MetaData$Request. method _uri HttpVersion/HTTP_2 $)
       (HeadersFrame. $ nil last?))))
@@ -111,15 +111,16 @@
               len (.remaining data)
               last? (.isEndStream ^DataFrame frame)]
           (stream-log :trace stream "Received DATA-FRAME (" len " bytes) ENDFRAME=" last?)
-          (when (some? data-ch)
-            (doseq [b (repeatedly len #(.get data))]
-              (async/>!! data-ch (bit-and 0xff b)))) ;; FIXME: cast to byte?
+          (when (and (some? data-ch) (pos? len))
+            (let [clone (ByteBuffer/allocate len)]
+              (.put clone data)
+              (async/>!! data-ch (.flip clone))))
           (when last?
-            (end-stream! stream)))
-        (.succeeded callback))
-      (onFailure [_ stream error reason callback]
-        (stream-log :error stream "FAILURE: " error)
-        (>!! meta-ch {:error {:type :failure :code error :reason reason}})
+            (end-stream! stream))
+          (.succeeded callback)))
+      (onFailure [_ stream error reason ex callback]
+        (stream-log :error stream "FAILURE: code-> " error " message-> " (ex-message ex))
+        (>!! meta-ch {:error {:type :failure :code error :reason reason :ex ex}})
         (end-stream! stream)
         (.succeeded callback))
       (onReset [_ stream frame]
@@ -140,23 +141,25 @@
   "Transmits a single DATA frame"
   ([stream data]
    (transmit-data-frame stream data false 0))
-  ([^Stream stream data last? padding]
-   (stream-log :trace stream "Sending DATA-FRAME with " (count data) " bytes, ENDFRAME=" last?)
+  ([^Stream stream ^ByteBuffer data last? padding]
+   (stream-log :trace stream "Sending DATA-FRAME with " (.remaining data) " bytes, ENDFRAME=" last?)
    @(jetty-callback-promise
      (fn [cb]
-       (let [frame (DataFrame. (.getId stream) (ByteBuffer/wrap data) last? padding)]
+       (let [frame (DataFrame. (.getId stream) data last? padding)]
          (.data stream frame cb))))))
+
+(def empty-data (ByteBuffer/wrap (byte-array 0)))
 
 (defn- transmit-eof
   "Transmits an empty DATA frame with the ENDSTREAM flag set to true, signifying the end of stream"
   [stream]
-  (transmit-data-frame stream (byte-array 0) true 0))
+  (transmit-data-frame stream empty-data true 0))
 
 (defn transmit-data-frames
   "Creates DATA frames from the buffers on the channel"
   [input stream]
   (if (some? input)
-    (p/promise
+    (p/create
      (fn [resolve reject]
        (go-loop []
          (if-let [frame (<! input)]
@@ -176,7 +179,9 @@
 ;; Exposed API
 ;;------------------------------------------------------------------------------------
 
-(defn connect [{:keys [host port input-buffer-size idle-timeout ssl] :or {host "localhost" port 80 input-buffer-size 16384 ssl false} :as params}]
+(def ^:const default-input-buffer (* 1024 1024))
+
+(defn connect [{:keys [host port input-buffer-size idle-timeout ssl] :or {host "localhost" input-buffer-size default-input-buffer port 80 ssl false} :as params}]
   (let [client (HTTP2Client.)
         address (InetSocketAddress. ^String host (int port))
         listener (ServerSessionListener$Adapter.)

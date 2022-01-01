@@ -11,7 +11,7 @@
             [clojure.string :as string]
             [clojure.pprint :refer [pprint]]
             [clojure.core.async :refer [go-loop <!! <! go chan >!! >! close! timeout poll! promise-chan]]
-            [promesa.core :as p]
+            [protojure.promesa :as p]
             [clojure.java.io :as io]
             [protojure.pedestal.ssl :as ssl])
   (:import (io.undertow.server HttpHandler
@@ -81,10 +81,15 @@
       (.awaitWritable ch)
       (-write ch buf bytes-remain))))
 
-(defn- write-data
+(defmulti write-data
   "Writes the provided bytes to the undertow response channel"
+  (fn [ch data] (type data)))
+(defmethod write-data (Class/forName "[B")
   [^StreamSinkChannel ch data]
   (-write ch (ByteBuffer/wrap data) (count data)))
+(defmethod write-data ByteBuffer
+  [^StreamSinkChannel ch ^ByteBuffer data]
+  (-write ch data (.remaining data)))
 
 (defn- flush
   [^StreamSinkChannel ch]
@@ -99,16 +104,19 @@
 (defn- write-direct-data
   "Used for trivial response bodies, such as String or byte types"
   [^StreamSinkChannel ch data]
-  (p/resolved
-   (do
-     (write-data ch data)
-     (flush ch))))
+  (p/create
+   (fn [resolve reject]
+     (resolve (do
+                (write-data ch data)
+                (flush ch))))))
 
 (defn- write-streaming-data
   "Used for InputStream type response bodies.  Will chunk the data to avoid
   overburdening the heap"
   [^StreamSinkChannel ch is]
-  (p/resolved (write-data-coll ch (byte-chunk-seq is 65536))))
+  (p/create
+   (fn [resolve reject]
+     (resolve (write-data-coll ch (byte-chunk-seq is 65536))))))
 
 (defn- write-available-async-data
   "Drains all remaining data from a core.async channel and flushes it to the response channel"
@@ -119,7 +127,7 @@
   "Used for core.async type response bodies.  Each message received is assumed
   to represent a data frame and thus will be flushed"
   [^StreamSinkChannel output-ch input-ch]
-  (p/promise
+  (p/create
    (fn [resolve reject]
      (write-available-async-data output-ch input-ch)
      (go
@@ -161,14 +169,14 @@
   "Receives request body as a callback and puts the bytes on a core.async channel"
   [exchange ch]
   (let [receiver (.getRequestReceiver ^HttpServerExchange exchange)]
-    (p/promise
+    (p/create
      (fn [resolve reject]
        (.receivePartialBytes receiver
                              (reify Receiver$PartialBytesCallback
                                (handle [this exchange message last]
                                  (.pause receiver)
-                                 (doseq [b (seq message)]
-                                   (>!! ch (bit-and 0xff b)))
+                                 (when-not (empty? message)
+                                   (>!! ch (ByteBuffer/wrap message)))
                                  (when last
                                    (close! ch)
                                    (resolve true))
@@ -209,7 +217,7 @@
   (fn [exchange trailers] (type trailers)))
 (defmethod transmit-trailers clojure.core.async.impl.channels.ManyToManyChannel
   [exchange trailers]
-  (p/promise
+  (p/create
    (fn [resolve reject]
      (go
        (resolve (write-trailers exchange (<! trailers)))))))
@@ -218,7 +226,9 @@
   (p/resolved true))
 (defmethod transmit-trailers :default
   [exchange trailers]
-  (p/resolved (write-trailers exchange trailers)))
+  (p/create
+   (fn [resolve reject]
+     (resolve (write-trailers exchange trailers)))))
 
 (defn disconnect! [channel]
   (>!! channel true))
@@ -309,8 +319,10 @@
 
   ;; Set Response Headers
   (let [ctx (.getResponseHeaders exchange)]
-    (doseq [[k v] headers]
-      (.put ctx (HttpString. ^String k) ^String v)))
+    (doseq [[^String k ^String v] headers]
+      (cond
+        (string? v) (.put ctx (HttpString. k) v)
+        (coll? v) (.putAll ctx (HttpString. k) v))))
 
   ;; Start asynchronous output
   (let [output-ch (open-output-channel exchange)]
@@ -319,7 +331,7 @@
                 (transmit-trailers exchange trailers)])
         (p/catch (fn [ex]
                    (log/error :exception ex)))
-        (p/finally (fn []
+        (p/finally (fn [_ _]
                      (close-output-channel exchange output-ch)
                      (unsubscribe-close connections exchange)
                      (.endExchange exchange))))))

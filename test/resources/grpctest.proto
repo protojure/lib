@@ -23,8 +23,26 @@ message SimpleResponse {
     string msg = 1;
 }
 
+message ErrorRequest {
+    int32 status = 1;
+    string message = 2;
+}
+
+message BigPayload {
+    enum Mode {
+        MODE_INVALID  = 0;
+        MODE_UPLOAD   = 1;
+        MODE_DOWNLOAD = 2;
+        MODE_BIDI     = 3;
+    }
+
+    Mode  mode = 1;
+    bytes data = 2;
+}
+
 service TestService {
-    rpc CloseDetect (CloseDetectRequest) returns (stream google.protobuf.Any);
+    rpc ClientCloseDetect (CloseDetectRequest) returns (stream google.protobuf.Any);
+    rpc ServerCloseDetect (google.protobuf.Empty) returns (stream google.protobuf.Any);
     rpc FlowControl (FlowControlRequest) returns (stream FlowControlPayload);
     rpc Metadata (google.protobuf.Empty) returns (SimpleResponse);
     rpc ShouldThrow (google.protobuf.Empty) returns (google.protobuf.Empty);
@@ -32,4 +50,7 @@ service TestService {
     rpc AllEmpty(google.protobuf.Empty) returns (google.protobuf.Empty);
     rpc AsyncEmpty(google.protobuf.Empty) returns (stream google.protobuf.Empty);
     rpc DeniedStreamer(google.protobuf.Empty) returns (stream google.protobuf.Empty);
+    rpc ReturnError(ErrorRequest) returns (google.protobuf.Empty);
+    rpc ReturnErrorStreaming(ErrorRequest) returns (stream google.protobuf.Empty);
+    rpc BandwidthTest(BigPayload) returns (BigPayload);
 }

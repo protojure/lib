@@ -9,7 +9,7 @@
             [protojure.grpc.client.api :as api]
             [protojure.grpc.codec.lpm :as lpm]
             [protojure.internal.grpc.client.providers.http2.jetty :as jetty]
-            [promesa.core :as p])
+            [protojure.promesa :as p])
   (:refer-clojure :exclude [resolve]))
 
 (set! *warn-on-reflection* true)
@@ -54,7 +54,7 @@
   the :status code.
   "
   [meta-ch]
-  (p/promise
+  (p/create
    (fn [resolve reject]
      (go-loop [response {}]
        (if-let [data (<! meta-ch)]
@@ -68,7 +68,7 @@
   "Drains all remaining metadata, which should primarily consist of :trailer tags, such as
   :grpc-status.  We are considered complete when the jetty layer closes the channel"
   [meta-ch response]
-  (p/promise
+  (p/create
    (fn [resolve reject]
      (go-loop [response response]
        (if-let [{:keys [trailers] :as data} (<! meta-ch)]
@@ -140,7 +140,8 @@
   (invoke [_ {:keys [input output] :as params}]
     (let [input-ch (input-pipeline input codecs content-coding max-frame-size)
           meta-ch (async/chan 32)
-          output-ch (when (some? output) (async/chan input-buffer-size))]
+          output-ch (when (some? output) (async/chan (max 32
+                                                          (/ input-buffer-size max-frame-size))))]
       (-> (send-request context uri codecs content-coding metadata params input-ch meta-ch output-ch)
           (p/then (fn [stream]
                     (p/all [(-> (client-send input-ch stream)

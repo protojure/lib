@@ -33,17 +33,17 @@
 
 ;;----------------------------------------------------------------------------------
 ;;----------------------------------------------------------------------------------
-;; opt's oneof Implementations
+;; Selection-opt's oneof Implementations
 ;;----------------------------------------------------------------------------------
 ;;----------------------------------------------------------------------------------
 
-(defn convert-opt [origkeyval]
+(defn convert-Selection-opt [origkeyval]
   (cond
     (get-in origkeyval [:opt :e]) (update-in origkeyval [:opt :e] new-Empty)
     (get-in origkeyval [:opt :ne]) (update-in origkeyval [:opt :ne] new-NonEmpty)
     :default origkeyval))
 
-(defn write-opt [opt os]
+(defn write-Selection-opt [opt os]
   (let [field (first opt)
         k (when-not (nil? field) (key field))
         v (when-not (nil? field) (val field))]
@@ -156,7 +156,7 @@
 (defrecord Selection-record [opt]
   pb/Writer
   (serialize [this os]
-    (write-opt  (:opt this) os))
+    (write-Selection-opt  (:opt this) os))
   pb/TypeReflection
   (gettype [this]
     "com.example.empty.Selection"))
@@ -189,7 +189,7 @@
   [init]
   {:pre [(if (s/valid? ::Selection-spec init) true (throw (ex-info "Invalid input" (s/explain-data ::Selection-spec init))))]}
   (-> (merge Selection-defaults init)
-      (convert-opt)
+      (convert-Selection-opt)
       (map->Selection-record)))
 
 (defn pb->Selection
@@ -249,3 +249,4 @@
   (cis->Container (serdes.stream/new-cis input)))
 
 (def ^:protojure.protobuf.any/record Container-meta {:type "com.example.empty.Container" :decoder pb->Container})
+

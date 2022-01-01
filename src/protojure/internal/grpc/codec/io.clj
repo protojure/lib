@@ -2,20 +2,30 @@
 ;;
 ;; SPDX-License-Identifier: Apache-2.0
 
-(ns protojure.internal.grpc.codec.io
+(ns ^:no-doc protojure.internal.grpc.codec.io
   (:require [clojure.core.async :refer [<! >! <!! alt!! go go-loop] :as async]
             [clojure.tools.logging :as log])
-  (:import (clojure.core.async.impl.channels ManyToManyChannel)))
+  (:import (java.nio ByteBuffer)))
 
 (set! *warn-on-reflection* true)
 
-(defn- take!-with-tmo [data-ch tmo]
+(defn- take!-with-tmo
+  ^ByteBuffer [data-ch tmo]
   (if (some? tmo)
     (let [tmo-ch (async/timeout tmo)]
       (alt!!
         data-ch ([b] b)
         tmo-ch ([_] (throw (ex-info "Timeout" {:context "Timeout waiting for LPM bytes"})))))
     (<!! data-ch)))
+
+(defn- get-buffer
+  ^ByteBuffer [{:keys [id ch tmo buf] :as ctx}]
+  (let [^ByteBuffer _buf @buf]
+    (if (or (nil? _buf) (false? (.hasRemaining _buf)))
+      (when-let [_buf (take!-with-tmo ch tmo)]
+        (reset! buf _buf)
+        _buf)
+      _buf)))
 
 ;;--------------------------------------------------------------------------------------------
 ;; InputStream
@@ -26,31 +36,43 @@
  :prefix is-
  :state state
  :init init
- :constructors {[Object] []}
- :exposes-methods {read parentRead})
+ :constructors {[Object] []})
 
-(defn- is-init [{:keys [ch tmo]}]
-  [[] {:ch ch :tmo tmo}])
+(defn- is-init [{:keys [ch tmo buf]}]
+  [[] {:ch ch :tmo tmo :buf (atom buf)}])
 
 (defn- is-available
   [^protojure.internal.grpc.io.InputStream this]
-  (let [{:keys [ch]} (.state this)]
-    (if-let [buf (.buf ^ManyToManyChannel ch)]
-      (count buf)
-      1)))                                                 ;; FIXME: estimate 1 byte if we can't tell?
+  (let [{:keys [buf] :as ctx} (.state this)
+        ^ByteBuffer _buf @buf]
+    (if (and (some? _buf) (.hasRemaining _buf))
+      (.remaining _buf)
+      0)))
+
+(defn read-impl
+  [this b off len]
+  (let [ctx (.state this)
+        buf (get-buffer ctx)]
+    (if (some? buf)
+      (let [len (min len (.remaining buf))]
+        (when (pos? len)
+          (.get buf b off len))
+        (log/debug "read:" len "bytes" (.remaining buf) "remain")
+        len)
+      -1)))
 
 (defn- is-read
   "Reads the next byte of data from the input stream. The value byte is returned as an int in the range 0 to 255.
   See InputStream for further details."
   ([^protojure.internal.grpc.io.InputStream this bytes offset len]
-   (.parentRead this bytes offset len))
+   (read-impl this bytes offset len))
   ([^protojure.internal.grpc.io.InputStream this bytes]
-   (.parentRead this bytes))
+   (read-impl this bytes 0 (count bytes)))
   ([^protojure.internal.grpc.io.InputStream this]
-   (let [{:keys [ch tmo]} (.state this)]
-     (if-let [b (take!-with-tmo ch tmo)]
-       b
-       -1))))
+   (let [ctx (.state this)
+         buf (get-buffer ctx)]
+     (or (some->> buf (.get) (bit-and 0xff) int)
+         -1))))
 
 ;;--------------------------------------------------------------------------------------------
 ;; OutputStream
@@ -63,71 +85,30 @@
  :init init
  :constructors {[Object] []})
 
-(defn- take-available
-  "Creates a lazy-sequence of bytes representing what is currently available on the channel.  We
-   block for regular data on the assumption that we are guaranteed that there is more data coming
-   up until we see a :flush.  After a :flush, there may or may not be more data coming, so we
-   test this with a poll! and opportunistically consume if it is available. This allows us to
-   potentially coalesce multiple LPM frames into one DATA frame."
-  [ch]
-  (take-while some?
-              (repeatedly
-               #(loop [data (<!! ch)]
-                  (when (some? data)
-                    (if (= :flush data)
-                      (recur (async/poll! ch))
-                      data))))))
-
-(defn- build-data-frame
-  "Given a channel and a byte already received, accumulate all remaining data into a byte-array
-   until we either consume all available bytes, fill the max-frame-size, or receive EOF."
-  [ch first-byte max-frame-size]
-  (->> (take-available ch)
-       (take (dec max-frame-size))                          ;; -1 to account for first-byte
-       (cons first-byte)
-       (byte-array)))
-
-(defn- bytes-to-frames
-  "Creates byte-array frames from the stream of bytes available on the input channel"
-  [input output max-frame-size]
-  (go
-    (try
-      (loop []
-        (when-let [data (<! input)]
-          (when-not (= :flush data)                                   ;; drop :flush signals on the floor
-            (>! output (build-data-frame input data max-frame-size)))
-          (recur)))
-      (catch Exception e
-        (log/error e))
-      (finally
-        (async/close! output)))))
-
-(defn- os-init-framed [{:keys [max-frame-size] :as options}]
-  (let [bytes-ch (async/chan max-frame-size)
-        frames-ch (:ch options)]
-    (bytes-to-frames bytes-ch frames-ch max-frame-size)
-    {:ch bytes-ch :framed? true}))
-
-(defn- os-init [{:keys [ch max-frame-size] :as options}]
-  (if (and (some? max-frame-size) (pos? max-frame-size))
-    [[] (os-init-framed options)]
-    [[] {:ch ch :framed? false}]))
+(defn- os-init [{:keys [ch max-frame-size] :or {max-frame-size 16384} :as options}]
+  {:pre [(and (some? max-frame-size) (pos? max-frame-size))]}
+  [[] {:ch ch :frame-size max-frame-size :buf (atom (ByteBuffer/allocate max-frame-size))}])
 
 (defn- os-flush
-  "Sends a ':flush' signal to our framer when used in 'framed?=true' mode, NOP for streaming mode.
-  N.B. The flush may or may not be result in an immediate write to the underlying sink since
-  the framing layer may try to coalesce writes at its own discretion"
   [^protojure.internal.grpc.io.OutputStream this]
-  (let [{:keys [ch framed?]} (.state this)]
-    (when framed?
-      (async/>!! ch :flush))))
+  (let [{:keys [ch frame-size buf]} (.state this)
+        ^ByteBuffer _buf @buf]
+    (when (pos? (.position _buf))
+      (async/>!! ch (.flip _buf))
+      (reset! buf (ByteBuffer/allocate frame-size)))))
 
 (defn- os-close
   [^protojure.internal.grpc.io.OutputStream this]
   (let [{:keys [ch]} (.state this)]
+    (.flush this)
     (async/close! ch)))
 
 (defn- os-write-int
   [^protojure.internal.grpc.io.OutputStream this b]
-  (let [{:keys [ch]} (.state this)]
-    (async/>!! ch (bit-and b 0xFF))))
+  (let [{:keys [buf]} (.state this)
+        ^ByteBuffer _buf @buf]
+    (when (zero? (.remaining _buf))
+      (.flush this))
+    (let [^ByteBuffer _buf @buf
+          b (bit-and 0xff b)]
+      (.put _buf (byte-array [b])))))

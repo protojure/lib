@@ -14,7 +14,7 @@
             [protojure.grpc.codec.compression :as compression]
             [protojure.test.utils :refer [data-equal?]]
             [com.google.protobuf :as google]
-            [promesa.core :as p]
+            [protojure.promesa :as p]
             [example.types :as example]
             [com.example.addressbook :as addressbook]
             [com.example.empty :as empty])
@@ -287,8 +287,8 @@
       (async/close! input)
       @task
       (let [result (async-seq output)]
-        (is (= 5 (count result)))
-        (is (every? zero? result))))))
+        (is (= 1 (count result)))
+        (is (-> result first (.remaining) (= 5)))))))
 
 (deftest grpc-timeout-test
   (testing "Verify that we correctly timeout on a stalled decode"

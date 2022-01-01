@@ -31,6 +31,43 @@
 (declare cis->SimpleResponse)
 (declare ecis->SimpleResponse)
 (declare new-SimpleResponse)
+(declare cis->ErrorRequest)
+(declare ecis->ErrorRequest)
+(declare new-ErrorRequest)
+(declare cis->BigPayload)
+(declare ecis->BigPayload)
+(declare new-BigPayload)
+
+;;----------------------------------------------------------------------------------
+;;----------------------------------------------------------------------------------
+;; Enumerations
+;;----------------------------------------------------------------------------------
+;;----------------------------------------------------------------------------------
+
+;-----------------------------------------------------------------------------
+; BigPayload-Mode
+;-----------------------------------------------------------------------------
+(def BigPayload-Mode-default :mode-invalid)
+
+(def BigPayload-Mode-val2label {0 :mode-invalid
+                                1 :mode-upload
+                                2 :mode-download
+                                3 :mode-bidi})
+
+(def BigPayload-Mode-label2val (set/map-invert BigPayload-Mode-val2label))
+
+(defn cis->BigPayload-Mode [is]
+  (let [val (serdes.core/cis->Enum is)]
+    (get BigPayload-Mode-val2label val val)))
+
+(defn- get-BigPayload-Mode [value]
+  {:pre [(or (int? value) (contains? BigPayload-Mode-label2val value))]}
+  (get BigPayload-Mode-label2val value value))
+
+(defn write-BigPayload-Mode
+  ([tag value os] (write-BigPayload-Mode tag {:optimize false} value os))
+  ([tag options value os]
+   (serdes.core/write-Enum tag options (get-BigPayload-Mode value) os)))
 
 ;;----------------------------------------------------------------------------------
 ;;----------------------------------------------------------------------------------
@@ -41,7 +78,6 @@
 ;-----------------------------------------------------------------------------
 ; CloseDetectRequest
 ;-----------------------------------------------------------------------------
-
 (defrecord CloseDetectRequest-record [id]
   pb/Writer
   (serialize [this os]
@@ -236,4 +272,106 @@
   (cis->SimpleResponse (serdes.stream/new-cis input)))
 
 (def ^:protojure.protobuf.any/record SimpleResponse-meta {:type "protojure.test.grpc.SimpleResponse" :decoder pb->SimpleResponse})
+
+;-----------------------------------------------------------------------------
+; ErrorRequest
+;-----------------------------------------------------------------------------
+(defrecord ErrorRequest-record [status message]
+  pb/Writer
+  (serialize [this os]
+    (serdes.core/write-Int32 1  {:optimize true} (:status this) os)
+    (serdes.core/write-String 2  {:optimize true} (:message this) os))
+  pb/TypeReflection
+  (gettype [this]
+    "protojure.test.grpc.ErrorRequest"))
+
+(s/def :protojure.test.grpc.ErrorRequest/status int?)
+(s/def :protojure.test.grpc.ErrorRequest/message string?)
+(s/def ::ErrorRequest-spec (s/keys :opt-un [:protojure.test.grpc.ErrorRequest/status :protojure.test.grpc.ErrorRequest/message]))
+(def ErrorRequest-defaults {:status 0 :message ""})
+
+(defn cis->ErrorRequest
+  "CodedInputStream to ErrorRequest"
+  [is]
+  (->> (tag-map ErrorRequest-defaults
+                (fn [tag index]
+                  (case index
+                    1 [:status (serdes.core/cis->Int32 is)]
+                    2 [:message (serdes.core/cis->String is)]
+
+                    [index (serdes.core/cis->undefined tag is)]))
+                is)
+       (map->ErrorRequest-record)))
+
+(defn ecis->ErrorRequest
+  "Embedded CodedInputStream to ErrorRequest"
+  [is]
+  (serdes.core/cis->embedded cis->ErrorRequest is))
+
+(defn new-ErrorRequest
+  "Creates a new instance from a map, similar to map->ErrorRequest except that
+  it properly accounts for nested messages, when applicable.
+  "
+  [init]
+  {:pre [(if (s/valid? ::ErrorRequest-spec init) true (throw (ex-info "Invalid input" (s/explain-data ::ErrorRequest-spec init))))]}
+  (-> (merge ErrorRequest-defaults init)
+      (map->ErrorRequest-record)))
+
+(defn pb->ErrorRequest
+  "Protobuf to ErrorRequest"
+  [input]
+  (cis->ErrorRequest (serdes.stream/new-cis input)))
+
+(def ^:protojure.protobuf.any/record ErrorRequest-meta {:type "protojure.test.grpc.ErrorRequest" :decoder pb->ErrorRequest})
+
+;-----------------------------------------------------------------------------
+; BigPayload
+;-----------------------------------------------------------------------------
+(defrecord BigPayload-record [mode data]
+  pb/Writer
+  (serialize [this os]
+    (write-BigPayload-Mode 1  {:optimize true} (:mode this) os)
+    (serdes.core/write-Bytes 2  {:optimize true} (:data this) os))
+  pb/TypeReflection
+  (gettype [this]
+    "protojure.test.grpc.BigPayload"))
+
+(s/def :protojure.test.grpc.BigPayload/mode (s/or :keyword keyword? :int int?))
+(s/def :protojure.test.grpc.BigPayload/data bytes?)
+(s/def ::BigPayload-spec (s/keys :opt-un [:protojure.test.grpc.BigPayload/mode :protojure.test.grpc.BigPayload/data]))
+(def BigPayload-defaults {:mode BigPayload-Mode-default :data (byte-array 0)})
+
+(defn cis->BigPayload
+  "CodedInputStream to BigPayload"
+  [is]
+  (->> (tag-map BigPayload-defaults
+                (fn [tag index]
+                  (case index
+                    1 [:mode (cis->BigPayload-Mode is)]
+                    2 [:data (serdes.core/cis->Bytes is)]
+
+                    [index (serdes.core/cis->undefined tag is)]))
+                is)
+       (map->BigPayload-record)))
+
+(defn ecis->BigPayload
+  "Embedded CodedInputStream to BigPayload"
+  [is]
+  (serdes.core/cis->embedded cis->BigPayload is))
+
+(defn new-BigPayload
+  "Creates a new instance from a map, similar to map->BigPayload except that
+  it properly accounts for nested messages, when applicable.
+  "
+  [init]
+  {:pre [(if (s/valid? ::BigPayload-spec init) true (throw (ex-info "Invalid input" (s/explain-data ::BigPayload-spec init))))]}
+  (-> (merge BigPayload-defaults init)
+      (map->BigPayload-record)))
+
+(defn pb->BigPayload
+  "Protobuf to BigPayload"
+  [input]
+  (cis->BigPayload (serdes.stream/new-cis input)))
+
+(def ^:protojure.protobuf.any/record BigPayload-meta {:type "protojure.test.grpc.BigPayload" :decoder pb->BigPayload})
 

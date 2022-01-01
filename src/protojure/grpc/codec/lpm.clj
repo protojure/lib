@@ -5,7 +5,7 @@
 (ns protojure.grpc.codec.lpm
   "Utility functions for GRPC [length-prefixed-message](https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md#requests) encoding."
   (:require [clojure.core.async :refer [<! >! go go-loop] :as async]
-            [promesa.core :as p]
+            [protojure.promesa :as p]
             [protojure.protobuf :refer [->pb]]
             [protojure.grpc.codec.compression :as compression]
             [clojure.tools.logging :as log]
@@ -73,6 +73,20 @@
         lenbuf (rest hdr)]
     {:compressed? (pos? compressed?) :len (bytes->num lenbuf)}))
 
+(defn- blocking-read
+  [^InputStream is b off len]
+  (let [alen (.read is b off len)]
+    (cond
+      (= alen -1) (throw (ex-info "short-read" {}))
+      (< alen len) (recur is b (+ off alen) (- len alen))
+      :default true)))
+
+(defn- read-header
+  [^InputStream is]
+  (let [hdr (byte-array 5)]
+    (blocking-read is hdr 0 5)
+    (decode-header hdr)))
+
 (defn- decode-body
   "Decodes a LPM payload based on a previously decoded header (see [[decode-header]])"
   [f is {:keys [compressed? len] :as header} options]
@@ -80,12 +94,10 @@
       (decoder-stream compressed? options)
       f))
 
-(defn- _decode [f is buf data decompressor]
-  (let [buf (conj buf data)]
-    (if (= (count buf) 5)
-      (let [hdr (decode-header buf)]
-        [[] (decode-body f is hdr decompressor)])
-      [buf nil])))
+(defn- decode->seq [f ^InputStream is decompressor]
+  (lazy-seq (when (pos? (.available is))
+              (let [hdr (read-header is)]
+                (cons (decode-body f is hdr decompressor) (decode->seq f is decompressor))))))
 
 ;;--------------------------------------------------------------------------------------------
 
@@ -131,20 +143,20 @@ The value for the **content-coding** option must be one of
 
 "
   [f input output {:keys [codecs content-coding tmo] :or {codecs compression/builtin-codecs tmo 5000} :as options}]
-  (let [is (InputStream. {:ch input :tmo tmo})
-        decompressor (when (and (some? content-coding) (not= content-coding "identity"))
+  (let [decompressor (when (and (some? content-coding) (not= content-coding "identity"))
                        (compression/decompressor codecs content-coding))]
-    (p/promise
+    (p/create
      (fn [resolve reject]
        (go
          (try
-           (loop [acc []]
-             (if-let [data (<! input)]
-               (let [[acc msg] (_decode f is acc data decompressor)]
-                 (when (some? msg)
-                   (log/trace "Decoded: " msg)
-                   (>! output msg))
-                 (recur acc))
+           (loop []
+             (if-let [buf (<! input)]
+               (let [is (InputStream. {:ch input :tmo tmo :buf buf})]
+                 (doseq [msg (decode->seq f is decompressor)]
+                   (when (some? msg)
+                     (log/trace "Decoded: " msg)
+                     (>! output msg)))
+                 (recur))
                (resolve :ok)))
            (catch Exception e
              (reject e))
@@ -224,10 +236,10 @@ The _max-frame-size_ option dictates how bytes are encoded on the _output_ chann
 ```
   "
   [f input output {:keys [codecs content-coding max-frame-size] :or {codecs compression/builtin-codecs} :as options}]
-  (let [os (OutputStream. {:ch output :max-frame-size max-frame-size})
+  (let [os (OutputStream. (cond-> {:ch output} (some? max-frame-size) (assoc :max-frame-size max-frame-size)))
         compressor (when (and (some? content-coding) (not= content-coding "identity"))
                      (compression/compressor codecs content-coding))]
-    (p/promise
+    (p/create
      (fn [resolve reject]
        (go
          (try
