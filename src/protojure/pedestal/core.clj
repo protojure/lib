@@ -91,15 +91,16 @@
   [^StreamSinkChannel ch ^ByteBuffer data]
   (-write ch data (.remaining data)))
 
-(defn- flush
+(defn- soft-flush
+  "Soft-flush the channel, ignoring any 'false' return status.  We will hard-flush before shutting down the connection"
   [^StreamSinkChannel ch]
-  (while (not (.flush ch))))
+  (.flush ch))
 
 (defn- write-data-coll
   "Writes and flushes an entire collection"
   [^StreamSinkChannel ch coll]
   (run! (partial write-data ch) coll)
-  (flush ch))
+  (soft-flush ch))
 
 (defn- write-direct-data
   "Used for trivial response bodies, such as String or byte types"
@@ -108,7 +109,7 @@
    (fn [resolve reject]
      (resolve (do
                 (write-data ch data)
-                (flush ch))))))
+                (soft-flush ch))))))
 
 (defn- write-streaming-data
   "Used for InputStream type response bodies.  Will chunk the data to avoid
@@ -130,17 +131,16 @@
   (p/create
    (fn [resolve reject]
      (write-available-async-data output-ch input-ch)
-     (go
-       (try
-         (loop []
-           (if-let [data (<! input-ch)]
-             (do
-               (write-data output-ch data)
-               (write-available-async-data output-ch input-ch)
-               (recur))
-             (resolve true)))
-         (catch Exception e
-           (reject e)))))))
+     (try
+       (loop []
+         (if-let [data (<!! input-ch)]
+           (do
+             (write-data output-ch data)
+             (write-available-async-data output-ch input-ch)
+             (recur))
+           (resolve true)))
+       (catch Exception e
+         (reject e))))))
 
 (defn- open-output-channel
   "Opens the response channel and sets it up for asynchronous operation"
@@ -157,7 +157,7 @@
   (try
     (.shutdownWrites ch)
     (loop []
-      (if (.flush ch)
+      (if (.flush ch)                                       ;; hard-flush in a loop until the channel is drained
         (.close ch)
         (recur)))
     (catch Exception e
@@ -276,6 +276,12 @@
 
 (declare handle-response)
 
+(defn chain-execute [request interceptors]
+  (p/create
+   (fn [resolve reject]
+     (let [response-handler (pedestal.interceptors/on-response ::container resolve)]
+       (pedestal.chain/execute {:request request} (cons response-handler interceptors))))))
+
 (defn- handle-request
   "Our main handler - Every request arriving at the undertow endpoint
   filters through this function.  We decode it and then invoke our pedestal
@@ -292,17 +298,15 @@
                           :close-ch         (subscribe-close connections exchange)
                           :uri              (.getRequestURI exchange)
                           :path-info        (.getRequestPath exchange)
-                          :async-supported? true}
-        response-handler  (pedestal.interceptors/on-response
-                           ::container
-                           (partial handle-response connections exchange input-status))]
+                          :async-supported? true}]
 
     (.execute pool
               (fn []
                 (try
-                  (pedestal.chain/execute {:request request} (cons response-handler interceptors))
-                  (catch Exception e
-                    (log/error :msg "unhandled" :exception e)))))))
+                  (let [response @(chain-execute request interceptors)]
+                    (handle-response connections exchange input-status response))
+                  (catch Exception ex
+                    (log/error :msg "unhandled" :exception ex)))))))
 
 (defn- handle-response
   "This function is invoked when the interceptor chain has fully executed and it is now time to
@@ -326,15 +330,13 @@
 
   ;; Start asynchronous output
   (let [output-ch (open-output-channel exchange)]
-    (-> (p/all [input-status
-                (transmit-body output-ch body)
-                (transmit-trailers exchange trailers)])
-        (p/catch (fn [ex]
-                   (log/error :exception ex)))
-        (p/finally (fn [_ _]
-                     (close-output-channel exchange output-ch)
-                     (unsubscribe-close connections exchange)
-                     (.endExchange exchange))))))
+    @(-> (p/all [input-status
+                 (transmit-trailers exchange trailers)
+                 (transmit-body output-ch body)])
+         (p/finally (fn [_ _]
+                      (close-output-channel exchange output-ch)
+                      (unsubscribe-close connections exchange)
+                      (.endExchange exchange))))))
 
 (defn provider
   "Generates our undertow provider, which defines the callback point between
