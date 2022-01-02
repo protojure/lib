@@ -4,9 +4,27 @@
 
 (ns protojure.protobuf
   "Main API entry point for protobuf applications"
-  (:require [protojure.protobuf.protocol :refer [serialize]])
+  (:require [protojure.protobuf.protocol :as p])
   (:import (com.google.protobuf CodedOutputStream)
-           (java.io ByteArrayOutputStream)))
+           (java.io OutputStream ByteArrayOutputStream)
+           (java.nio ByteBuffer)))
+
+(set! *warn-on-reflection* true)
+
+(defn- serialize! [msg ^CodedOutputStream os]
+  (p/serialize msg os)
+  (.flush os))
+
+(defmulti #^{:private true} serialize (fn [msg output] (type output)))
+(defmethod serialize OutputStream
+  [msg ^OutputStream output]
+  (serialize! msg (CodedOutputStream/newInstance output)))
+(defmethod serialize ByteBuffer
+  [msg ^ByteBuffer output]
+  (serialize! msg (CodedOutputStream/newInstance output)))
+(defmethod serialize ByteBuffer
+  [msg ^ByteBuffer output]
+  (serialize! msg (CodedOutputStream/newInstance output)))
 
 (defn ->pb
   "Serialize a record implementing the [[Writer]] protocol into protobuf bytes."
@@ -15,6 +33,4 @@
      (->pb msg os)
      (.toByteArray os)))
   ([msg output]
-   (let [os (CodedOutputStream/newInstance output)]
-     (serialize msg os)
-     (.flush os))))
+   (serialize msg output)))
