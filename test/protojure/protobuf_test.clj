@@ -14,7 +14,7 @@
             [protojure.grpc.codec.compression :as compression]
             [protojure.test.utils :refer [data-equal?]]
             [com.google.protobuf :as google]
-            [protojure.promesa :as p]
+            [promesa.core :as p]
             [example.types :as example]
             [com.example.addressbook :as addressbook]
             [com.example.empty :as empty])

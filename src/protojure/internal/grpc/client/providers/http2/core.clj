@@ -9,8 +9,10 @@
             [protojure.grpc.client.api :as api]
             [protojure.grpc.codec.lpm :as lpm]
             [protojure.internal.grpc.client.providers.http2.jetty :as jetty]
-            [protojure.promesa :as p])
-  (:import (org.eclipse.jetty.http2.api Stream))
+            [promesa.core :as p]
+            [promesa.exec :as exec])
+  (:import (org.eclipse.jetty.http2.api Stream)
+           (java.util.concurrent Executors))
   (:refer-clojure :exclude [resolve]))
 
 (set! *warn-on-reflection* true)
@@ -126,6 +128,8 @@
 (defn- safe-close! [ch]
   (some-> ch async/close!))
 
+(def #^{:private true} executor (Executors/newCachedThreadPool))
+
 ;;-----------------------------------------------------------------------------
 ;;-----------------------------------------------------------------------------
 ;; External API
@@ -156,7 +160,8 @@
                                            (throw ex))))])))
           (p/then (fn [[_ status]]
                     (log/trace "GRPC completed:" status)
-                    status))
+                    status)
+                  executor)
           (p/catch (fn [ex]
                      (log/error "GRPC failed:" ex)
                      (safe-close (:ch output))

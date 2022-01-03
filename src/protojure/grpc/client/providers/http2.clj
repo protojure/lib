@@ -8,7 +8,7 @@
   (:require [protojure.internal.grpc.client.providers.http2.core :as core]
             [protojure.internal.grpc.client.providers.http2.jetty :as jetty]
             [protojure.grpc.codec.compression :refer [builtin-codecs]]
-            [protojure.promesa :as p]
+            [promesa.core :as p]
             [lambdaisland.uri :as lambdaisland]
             [clojure.tools.logging :as log]))
 
