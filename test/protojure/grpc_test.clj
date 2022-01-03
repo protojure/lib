@@ -7,7 +7,7 @@
   (:require [clojure.test :refer :all]
             [clojure.string :as string]
             [clojure.core.async :refer [<!! >!! <! >! go go-loop] :as async]
-            [protojure.promesa :as p]
+            [promesa.core :as p]
             [io.pedestal.http :as pedestal]
             [io.pedestal.http.body-params :as body-params]
             [io.pedestal.interceptor :refer [interceptor]]

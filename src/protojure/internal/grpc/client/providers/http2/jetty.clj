@@ -3,7 +3,7 @@
 ;; SPDX-License-Identifier: Apache-2.0
 
 (ns protojure.internal.grpc.client.providers.http2.jetty
-  (:require [protojure.promesa :as p]
+  (:require [promesa.core :as p]
             [clojure.core.async :refer [>!! <!! <! >! go go-loop] :as async]
             [clojure.tools.logging :as log])
   (:import (java.net InetSocketAddress)

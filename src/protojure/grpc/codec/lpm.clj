@@ -5,7 +5,7 @@
 (ns protojure.grpc.codec.lpm
   "Utility functions for GRPC [length-prefixed-message](https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md#requests) encoding."
   (:require [clojure.core.async :refer [<! >! go go-loop] :as async]
-            [protojure.promesa :as p]
+            [promesa.core :as p]
             [protojure.protobuf :refer [->pb]]
             [protojure.grpc.codec.compression :as compression]
             [clojure.tools.logging :as log]

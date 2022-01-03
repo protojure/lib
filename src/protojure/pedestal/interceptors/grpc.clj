@@ -7,7 +7,7 @@
   (:require [clojure.core.async :refer [go >! <!] :as async]
             [protojure.grpc.codec.lpm :as lpm]
             [protojure.grpc.status :as status]
-            [protojure.promesa :as p]
+            [promesa.core :as p]
             [io.pedestal.interceptor :as pedestal]
             [io.pedestal.interceptor.error :as err]
             [io.pedestal.log :as log]

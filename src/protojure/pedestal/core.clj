@@ -11,7 +11,7 @@
             [clojure.string :as string]
             [clojure.pprint :refer [pprint]]
             [clojure.core.async :refer [go-loop <!! <! go chan >!! >! close! timeout poll! promise-chan]]
-            [protojure.promesa :as p]
+            [promesa.core :as p]
             [clojure.java.io :as io]
             [protojure.pedestal.ssl :as ssl])
   (:import (io.undertow.server HttpHandler
