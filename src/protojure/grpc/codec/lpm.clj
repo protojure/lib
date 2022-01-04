@@ -5,7 +5,7 @@
 (ns protojure.grpc.codec.lpm
   "Utility functions for GRPC [length-prefixed-message](https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md#requests) encoding."
   (:require [clojure.core.async :refer [<! >! go go-loop] :as async]
-            [protojure.promesa :as p]
+            [promesa.core :as p]
             [protojure.protobuf :refer [->pb]]
             [protojure.grpc.codec.compression :as compression]
             [clojure.tools.logging :as log]
@@ -35,7 +35,7 @@
 
 (defn- num->bytes
   "Serializes an integer to a byte-array."
-  [num]
+  ^bytes [num]
   (byte-array (for [i (range 4)]
                 (-> (unsigned-bit-shift-right num
                                               (* 8 (- 4 i 1)))
@@ -170,9 +170,9 @@ The value for the **content-coding** option must be one of
 ;;--------------------------------------------------------------------------------------
 (defn- encode-buffer [buf len compressed? ^OutputStream os]
   (.write os (int (if compressed? 1 0)))
-  (.write os (bytes (num->bytes len)))
+  (.write os (num->bytes len) 0 4)
   (when (pos? len)
-    (.write os (bytes buf))))
+    (.write os buf 0 len)))
 
 (defn- encode-uncompressed [msg os]
   (let [buf (->pb msg)

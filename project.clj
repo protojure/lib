@@ -28,7 +28,7 @@
         protojure.internal.pedestal.io]
   :codox {:metadata {:doc/format :markdown}
           :namespaces [#"^(?!protojure.internal)"]}
-  :profiles {:dev {:dependencies [[protojure/google.protobuf "0.9.1"]
+  :profiles {:dev {:dependencies [[protojure/google.protobuf "1.0.0"]
                                   [org.clojure/tools.namespace "1.2.0"]
                                   [clj-http "3.12.3"]
                                   [com.taoensso/timbre "5.1.2"]
