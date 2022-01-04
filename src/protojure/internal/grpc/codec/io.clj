@@ -102,12 +102,33 @@
     (.flush this)
     (async/close! ch)))
 
-(defn- os-write-int
-  [^protojure.internal.grpc.io.OutputStream this b]
-  (let [{:keys [buf]} (.state this)
-        ^ByteBuffer _buf @buf]
+(defn- check-flush
+  [^protojure.internal.grpc.io.OutputStream this {:keys [buf]}]
+  (let [^ByteBuffer _buf @buf]
     (when (zero? (.remaining _buf))
-      (.flush this))
-    (let [^ByteBuffer _buf @buf
-          b (bit-and 0xff b)]
-      (.put _buf (byte-array [b])))))
+      (.flush this))))
+
+(defn -write-buf
+  [^protojure.internal.grpc.io.OutputStream this {:keys [buf] :as ctx} b off len]
+  (check-flush this ctx)
+  (let [^ByteBuffer _buf @buf
+        alen (min len (.remaining _buf))]
+    (when (pos? alen)
+      (.put _buf b off alen)
+      (when (< alen len)
+        (recur this ctx b (+ off alen) (- len alen))))))
+
+(defmulti #^{:private true} -write-1 (fn [this i] (type i)))
+(defmethod -write-1 (Class/forName "[B")
+  [^protojure.internal.grpc.io.OutputStream this b]
+  (-write-buf this (.state this) b 0 (count b)))
+(defmethod -write-1 :default
+  [^protojure.internal.grpc.io.OutputStream this b]
+  (let [b (bit-and 0xff b)]
+    (-write-buf this (.state this) (byte-array [b]) 0 1)))
+
+(defn os-write
+  ([^protojure.internal.grpc.io.OutputStream this b off len]
+   (-write-buf this (.state this) b off len))
+  ([^protojure.internal.grpc.io.OutputStream this b]
+   (-write-1 this b)))
