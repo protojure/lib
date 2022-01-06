@@ -270,7 +270,7 @@
     (swap! connections
            (fn [x]
              (update x kc (fn [y]
-                            (let [channel (get y ke)]
+                            (when-let [channel (get y ke)]
                               (disconnect! channel))
                             (dissoc y ke)))))))
 
