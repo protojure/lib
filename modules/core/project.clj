@@ -1,4 +1,4 @@
-(defproject protojure/core "2.0.0"
+(defproject protojure/core "2.0.1-SNAPSHOT"
   :description "Core protobuf and GRPC utilities for protojure"
   :url "http://github.com/protojure/lib"
   :license {:name "Apache License 2.0"
