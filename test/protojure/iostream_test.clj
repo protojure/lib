@@ -8,8 +8,8 @@
             [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.core.async :refer [<!!]])
-  (:import (protojure.internal.grpc.io InputStream
-                                       OutputStream)
+  (:import (protojure.internal.io InputStream
+                                  OutputStream)
            (java.nio ByteBuffer)))
 
 (deftest check-input-eof
