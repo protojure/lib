@@ -158,7 +158,7 @@
   (testing "Check that bytes entered to channel are properly read from InputStream"
     (let [test-string "Hello"
           test-channel (async/chan 8096)
-          in-stream (protojure.pedestal.io.InputStream. test-channel)
+          in-stream (protojure.internal.io.InputStream. {:ch test-channel})
           buff (byte-array 5)]
       (>!! test-channel (ByteBuffer/wrap (.getBytes test-string)))
       (async/close! test-channel)

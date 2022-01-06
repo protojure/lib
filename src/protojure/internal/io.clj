@@ -2,7 +2,7 @@
 ;;
 ;; SPDX-License-Identifier: Apache-2.0
 
-(ns ^:no-doc protojure.internal.grpc.codec.io
+(ns ^:no-doc protojure.internal.io
   (:require [clojure.core.async :refer [<! >! <!! alt!! go go-loop] :as async]
             [clojure.tools.logging :as log])
   (:import (java.nio ByteBuffer)))
@@ -31,7 +31,7 @@
 ;; InputStream
 ;;--------------------------------------------------------------------------------------------
 (gen-class
- :name protojure.internal.grpc.io.InputStream
+ :name protojure.internal.io.InputStream
  :extends java.io.InputStream
  :prefix is-
  :state state
@@ -42,7 +42,7 @@
   [[] {:ch ch :tmo tmo :buf (atom buf)}])
 
 (defn- is-available
-  [^protojure.internal.grpc.io.InputStream this]
+  [^protojure.internal.io.InputStream this]
   (let [{:keys [buf] :as ctx} (.state this)
         ^ByteBuffer _buf @buf]
     (if (and (some? _buf) (.hasRemaining _buf))
@@ -50,7 +50,7 @@
       0)))
 
 (defn read-impl
-  [^protojure.internal.grpc.io.InputStream this b off len]
+  [^protojure.internal.io.InputStream this b off len]
   (let [ctx (.state this)
         buf (get-buffer ctx)]
     (if (some? buf)
@@ -63,11 +63,11 @@
 (defn- is-read
   "Reads the next byte of data from the input stream. The value byte is returned as an int in the range 0 to 255.
   See InputStream for further details."
-  ([^protojure.internal.grpc.io.InputStream this bytes offset len]
+  ([^protojure.internal.io.InputStream this bytes offset len]
    (read-impl this bytes offset len))
-  ([^protojure.internal.grpc.io.InputStream this bytes]
+  ([^protojure.internal.io.InputStream this bytes]
    (read-impl this bytes 0 (count bytes)))
-  ([^protojure.internal.grpc.io.InputStream this]
+  ([^protojure.internal.io.InputStream this]
    (let [ctx (.state this)
          buf (get-buffer ctx)]
      (or (some->> buf (.get) (bit-and 0xff) int)
@@ -77,7 +77,7 @@
 ;; OutputStream
 ;;--------------------------------------------------------------------------------------------
 (gen-class
- :name protojure.internal.grpc.io.OutputStream
+ :name protojure.internal.io.OutputStream
  :extends java.io.OutputStream
  :prefix os-
  :state state
@@ -89,7 +89,7 @@
   [[] {:ch ch :frame-size max-frame-size :buf (atom (ByteBuffer/allocate max-frame-size))}])
 
 (defn- os-flush
-  [^protojure.internal.grpc.io.OutputStream this]
+  [^protojure.internal.io.OutputStream this]
   (let [{:keys [ch frame-size buf]} (.state this)
         ^ByteBuffer _buf @buf]
     (when (pos? (.position _buf))
@@ -97,19 +97,19 @@
       (reset! buf (ByteBuffer/allocate frame-size)))))
 
 (defn- os-close
-  [^protojure.internal.grpc.io.OutputStream this]
+  [^protojure.internal.io.OutputStream this]
   (let [{:keys [ch]} (.state this)]
     (.flush this)
     (async/close! ch)))
 
 (defn- check-flush
-  [^protojure.internal.grpc.io.OutputStream this {:keys [buf]}]
+  [^protojure.internal.io.OutputStream this {:keys [buf]}]
   (let [^ByteBuffer _buf @buf]
     (when (zero? (.remaining _buf))
       (.flush this))))
 
 (defn -write-buf
-  [^protojure.internal.grpc.io.OutputStream this {:keys [buf] :as ctx} b off len]
+  [^protojure.internal.io.OutputStream this {:keys [buf] :as ctx} b off len]
   (check-flush this ctx)
   (let [^ByteBuffer _buf @buf
         alen (min len (.remaining _buf))]
@@ -120,15 +120,15 @@
 
 (defmulti #^{:private true} -write-1 (fn [this i] (type i)))
 (defmethod -write-1 (Class/forName "[B")
-  [^protojure.internal.grpc.io.OutputStream this b]
+  [^protojure.internal.io.OutputStream this b]
   (-write-buf this (.state this) b 0 (count b)))
 (defmethod -write-1 :default
-  [^protojure.internal.grpc.io.OutputStream this b]
+  [^protojure.internal.io.OutputStream this b]
   (let [b (bit-and 0xff b)]
     (-write-buf this (.state this) (byte-array [b]) 0 1)))
 
 (defn os-write
-  ([^protojure.internal.grpc.io.OutputStream this b off len]
+  ([^protojure.internal.io.OutputStream this b off len]
    (-write-buf this (.state this) b off len))
-  ([^protojure.internal.grpc.io.OutputStream this b]
+  ([^protojure.internal.io.OutputStream this b]
    (-write-1 this b)))

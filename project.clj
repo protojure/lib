@@ -24,8 +24,7 @@
                  [commons-io/commons-io "2.11.0"]
                  [funcool/promesa "6.0.2"]
                  [lambdaisland/uri "1.12.89"]]
-  :aot [protojure.internal.grpc.codec.io
-        protojure.internal.pedestal.io]
+  :aot [protojure.internal.io]
   :codox {:metadata {:doc/format :markdown}
           :namespaces [#"^(?!protojure.internal)"]}
   :profiles {:dev {:dependencies [[protojure/google.protobuf "1.0.0"]

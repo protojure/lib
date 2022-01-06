@@ -11,7 +11,7 @@ DOC = target/doc/index.html
 
 COVERAGE_THRESHOLD = 82
 COVERAGE_EXCLUSION += "user"
-COVERAGE_EXCLUSION += "protojure.internal.pedestal.io"
+COVERAGE_EXCLUSION += "protojure.internal.io"
 
 DEPS = Makefile project.clj $(shell find src -type f)
 
