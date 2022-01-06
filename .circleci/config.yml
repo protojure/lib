@@ -13,11 +13,4 @@ jobs:
       JVM_OPTS: -Xmx3200m
     steps:
       - checkout
-      - run: lein deps
       - run: make all
-      - run: |
-          mkdir tmp
-          mv target/protojure-* tmp
-      - store_artifacts:
-          path: tmp/
-          destination: jar

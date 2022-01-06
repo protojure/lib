@@ -4,8 +4,7 @@
 ;; SPDX-License-Identifier: Apache-2.0
 
 (ns ^:no-doc protojure.internal.io
-  (:require [clojure.core.async :refer [<! >! <!! alt!! go go-loop] :as async]
-            [clojure.tools.logging :as log])
+  (:require [clojure.core.async :refer [<! >! <!! alt!! go go-loop] :as async])
   (:import (java.nio ByteBuffer)))
 
 (set! *warn-on-reflection* true)

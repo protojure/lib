@@ -4,45 +4,36 @@
 
 NAME = protojure
 LEIN = $(shell which lein || echo ./lein)
-VERSION = $(shell cat project.clj | grep defproject | awk '{ print $$3 }' | sed 's/\"//g')
-OUTPUT = target/$(NAME)-$(VERSION).jar
-POM = target/pom.xml
-DOC = target/doc/index.html
 
-DEPS = Makefile project.clj $(shell find src -type f)
+DEPS = Makefile project.clj
 
-all: scan test bin doc
+all: scan test install
 
 scan:
-	$(LEIN) cljfmt check
+	$(LEIN) sub cljfmt check
 
 # 'deep-scan' is a target for useful linters that are not conducive to automated checking,
 # typically because they present some false positives without an easy mechanism to overrule
 # them.  So we provide the target to make it easy to run by hand, but leave them out of the
 # automated gates.
 deep-scan: scan
-	-$(LEIN) bikeshed
-	-$(LEIN) kibit
+	-$(LEIN) sub bikeshed
+	-$(LEIN) sub kibit
 
 .PHONY: test
 test:
-	$(LEIN) cloverage
+	$(LEIN) sub install
+	cd modules/test && $(LEIN) eftest
 
-doc: $(DOC)
+install:
+	$(LEIN) sub install
 
-$(DOC): $(DEPS)
-	$(LEIN) codox
-
-bin: $(OUTPUT) $(POM)
-
-$(POM): $(DEPS)
-	$(LEIN) pom
-	cp pom.xml $@
-
-$(OUTPUT): $(DEPS)
-	$(LEIN) jar
+set-version:
+	$(LEIN) set-version $(VERSION)
+	$(LEIN) sub set-version $(VERSION)
 
 clean:
+	$(LEIN) sub clean
 	$(LEIN) clean
 
 .PHONY: protos
