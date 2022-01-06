@@ -9,10 +9,6 @@ OUTPUT = target/$(NAME)-$(VERSION).jar
 POM = target/pom.xml
 DOC = target/doc/index.html
 
-COVERAGE_THRESHOLD = 82
-COVERAGE_EXCLUSION += "user"
-COVERAGE_EXCLUSION += "protojure.internal.io"
-
 DEPS = Makefile project.clj $(shell find src -type f)
 
 all: scan test bin doc
@@ -30,7 +26,7 @@ deep-scan: scan
 
 .PHONY: test
 test:
-	$(LEIN) cloverage --fail-threshold $(COVERAGE_THRESHOLD) $(patsubst %,-e %, $(COVERAGE_EXCLUSION))
+	$(LEIN) cloverage
 
 doc: $(DOC)
 

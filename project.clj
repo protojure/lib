@@ -37,4 +37,10 @@
                                   [eftest "0.5.9"]
                                   [criterium "0.4.6"]
                                   [crypto-random "1.2.1"]]
-                   :resource-paths ["test/resources"]}})
+                   :resource-paths ["test/resources"]}}
+  :cloverage {:runner :eftest
+              :runner-opts {:multithread? false
+                            :fail-fast? true}
+              :fail-threshold 82
+              :ns-exclude-regex [#"user"
+                                 #"protojure.internal.io"]})
