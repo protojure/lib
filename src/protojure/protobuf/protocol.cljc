@@ -1,5 +1,5 @@
 ;; Copyright © 2019 State Street Bank and Trust Company.  All rights reserved
-;; Copyright © 2019-2020 Manetu, Inc.  All rights reserved
+;; Copyright © 2019-2022 Manetu, Inc.  All rights reserved
 ;;
 ;; SPDX-License-Identifier: Apache-2.0
 

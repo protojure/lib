@@ -1,4 +1,4 @@
-;; Copyright © 2020 Manetu, Inc.  All rights reserved
+;; Copyright © 2019-2022 Manetu, Inc.  All rights reserved
 ;;
 ;; SPDX-License-Identifier: Apache-2.0
 (ns protojure.protobuf.any
