@@ -29,7 +29,7 @@ install:
 	$(LEIN) sub install
 
 set-version:
-	$(LEIN) set-version $(VERSION)
+	sed -i '' 's/def protojure-version \".*\"/def protojure-version \"$(VERSION)\"/' project.clj
 	$(LEIN) sub set-version $(VERSION)
 
 clean:
