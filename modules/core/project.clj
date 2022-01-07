@@ -1,4 +1,4 @@
-(defproject protojure/core "2.0.1-SNAPSHOT"
+(defproject io.github.protojure/core "2.0.1-SNAPSHOT"
   :description "Core protobuf and GRPC utilities for protojure"
   :url "http://github.com/protojure/lib"
   :license {:name "Apache License 2.0"
@@ -15,7 +15,7 @@
   :dependencies [[org.clojure/clojure]
                  [org.clojure/core.async]
                  [org.clojure/tools.logging]
-                 [protojure/io]
+                 [io.github.protojure/io]
                  [com.google.protobuf/protobuf-java "3.19.1"]
                  [org.apache.commons/commons-compress "1.21"]
                  [commons-io/commons-io "2.11.0"]

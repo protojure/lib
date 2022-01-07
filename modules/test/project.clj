@@ -1,4 +1,4 @@
-(defproject protojure/test "2.0.1-SNAPSHOT"
+(defproject io.github.protojure/test "2.0.1-SNAPSHOT"
   :description "Test harness for protojure libs"
   :url "http://github.com/protojure/lib"
   :license {:name "Apache License 2.0"
@@ -11,8 +11,8 @@
             [lein-parent "0.3.8"]]
   :parent-project {:path "../../project.clj"
                    :inherit [:managed-dependencies :javac-options]}
-  :profiles {:dev {:dependencies [[protojure/grpc-client]
-                                  [protojure/grpc-server]
+  :profiles {:dev {:dependencies [[io.github.protojure/grpc-client]
+                                  [io.github.protojure/grpc-server]
                                   [protojure/google.protobuf]
                                   [org.clojure/tools.namespace "1.2.0"]
                                   [clj-http "3.12.3"]
