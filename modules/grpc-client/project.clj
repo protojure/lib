@@ -1,4 +1,4 @@
-(defproject protojure/grpc-client "2.0.1-SNAPSHOT"
+(defproject io.github.protojure/grpc-client "2.0.1-SNAPSHOT"
   :description "GRPC client library for protoc-gen-clojure"
   :url "http://github.com/protojure/lib"
   :license {:name "Apache License 2.0"
@@ -14,7 +14,7 @@
                    :inherit [:managed-dependencies :javac-options]}
   :dependencies [[org.clojure/clojure]
                  [org.clojure/core.async]
-                 [protojure/core]
+                 [io.github.protojure/core]
                  [org.eclipse.jetty.http2/http2-client "11.0.7"]
                  [org.eclipse.jetty/jetty-alpn-java-client "11.0.7"]
                  [lambdaisland/uri "1.12.89"]])

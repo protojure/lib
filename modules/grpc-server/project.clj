@@ -1,4 +1,4 @@
-(defproject protojure/grpc-server "2.0.1-SNAPSHOT"
+(defproject io.github.protojure/grpc-server "2.0.1-SNAPSHOT"
   :description "GRPC server library for protoc-gen-clojure"
   :url "http://github.com/protojure/lib"
   :license {:name "Apache License 2.0"
@@ -14,7 +14,7 @@
                    :inherit [:managed-dependencies :javac-options]}
   :dependencies [[org.clojure/clojure]
                  [org.clojure/core.async]
-                 [protojure/core]
+                 [io.github.protojure/core]
                  [io.undertow/undertow-core "2.2.14.Final"]
                  [io.undertow/undertow-servlet "2.2.14.Final"]
                  [io.pedestal/pedestal.log "0.5.9"]
