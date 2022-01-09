@@ -23,8 +23,8 @@
 (defmethod serialize ByteBuffer
   [msg ^ByteBuffer output]
   (serialize! msg (CodedOutputStream/newInstance output)))
-(defmethod serialize ByteBuffer
-  [msg ^ByteBuffer output]
+(defmethod serialize (Class/forName "[B")
+  [msg ^bytes output]
   (serialize! msg (CodedOutputStream/newInstance output)))
 
 (defn ->pb
