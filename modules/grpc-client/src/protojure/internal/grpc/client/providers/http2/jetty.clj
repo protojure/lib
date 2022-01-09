@@ -48,14 +48,14 @@
 (defn- jetty-callback-promise
   "converts a jetty 'callback' to promesa"
   [f]
-  (p/create
-   (fn [resolve reject]
-     (let [cb (reify Callback
-                (succeeded [_]
-                  (resolve true))
-                (failed [_ error]
-                  (reject error)))]
-       (f cb)))))
+  (let [p (async/promise-chan)
+        cb (reify Callback
+             (succeeded [_]
+               (async/put! p true))
+             (failed [_ error]
+               (async/put! p error)))]
+    (f cb)
+    p))
 
 (defn- ->fields
   "converts a map of [string string] name/value attributes to a jetty HttpFields container"
@@ -144,10 +144,10 @@
    (transmit-data-frame stream data false 0))
   ([^Stream stream ^ByteBuffer data last? padding]
    (stream-log :trace stream "Sending DATA-FRAME with " (.remaining data) " bytes, ENDFRAME=" last?)
-   @(jetty-callback-promise
-     (fn [cb]
-       (let [frame (DataFrame. (.getId stream) data last? padding)]
-         (.data stream frame cb))))))
+   (jetty-callback-promise
+    (fn [cb]
+      (let [frame (DataFrame. (.getId stream) data last? padding)]
+        (.data stream frame cb))))))
 
 (def empty-data (ByteBuffer/wrap (byte-array 0)))
 
@@ -164,16 +164,14 @@
      (fn [resolve reject]
        (go-loop []
          (if-let [frame (<! input)]
-           (do
-             (try
-               (transmit-data-frame stream frame)
-               (catch Exception e
-                 (reject e)))
-             (recur))
-           (try
-             (resolve (transmit-eof stream))
-             (catch Exception e
-               (reject e)))))))
+           (let [r (<! (transmit-data-frame stream frame))]
+             (if (= r true)
+               (recur)
+               (reject r)))
+           (let [r (<! (transmit-eof stream))]
+             (if (= r true)
+               (resolve true)
+               (reject r)))))))
     (p/resolved true)))
 
 ;;------------------------------------------------------------------------------------
