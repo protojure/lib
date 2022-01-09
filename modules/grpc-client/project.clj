@@ -15,6 +15,6 @@
   :dependencies [[org.clojure/clojure]
                  [org.clojure/core.async]
                  [io.github.protojure/core]
-                 [org.eclipse.jetty.http2/http2-client "11.0.7"]
-                 [org.eclipse.jetty/jetty-alpn-java-client "11.0.7"]
-                 [lambdaisland/uri "1.12.89"]])
+                 [org.eclipse.jetty.http2/http2-client]
+                 [org.eclipse.jetty/jetty-alpn-java-client]
+                 [lambdaisland/uri]])

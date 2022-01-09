@@ -16,7 +16,7 @@
                  [org.clojure/core.async]
                  [org.clojure/tools.logging]
                  [io.github.protojure/io]
-                 [com.google.protobuf/protobuf-java "3.19.1"]
-                 [org.apache.commons/commons-compress "1.21"]
-                 [commons-io/commons-io "2.11.0"]
-                 [funcool/promesa "6.0.2"]])
+                 [com.google.protobuf/protobuf-java]
+                 [org.apache.commons/commons-compress]
+                 [commons-io/commons-io]
+                 [funcool/promesa]])

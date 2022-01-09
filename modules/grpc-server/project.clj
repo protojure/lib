@@ -15,7 +15,7 @@
   :dependencies [[org.clojure/clojure]
                  [org.clojure/core.async]
                  [io.github.protojure/core]
-                 [io.undertow/undertow-core "2.2.14.Final"]
-                 [io.undertow/undertow-servlet "2.2.14.Final"]
-                 [io.pedestal/pedestal.log "0.5.9"]
-                 [io.pedestal/pedestal.service "0.5.9"]])
+                 [io.undertow/undertow-core]
+                 [io.undertow/undertow-servlet]
+                 [io.pedestal/pedestal.log]
+                 [io.pedestal/pedestal.service]])
