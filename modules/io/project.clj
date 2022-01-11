@@ -14,4 +14,4 @@
                    :inherit [:managed-dependencies :javac-options]}
   :dependencies [[org.clojure/clojure]
                  [org.clojure/core.async]]
-  :aot [protojure.internal.io])
+  :java-source-paths ["src"])

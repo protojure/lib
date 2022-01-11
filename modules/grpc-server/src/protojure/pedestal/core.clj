@@ -14,7 +14,8 @@
             [clojure.core.async :refer [go-loop <!! <! go chan >!! >! close! timeout poll! promise-chan]]
             [promesa.core :as p]
             [clojure.java.io :as io]
-            [protojure.pedestal.ssl :as ssl])
+            [protojure.pedestal.ssl :as ssl]
+            [protojure.internal.io :as pio])
   (:import (io.undertow.server HttpHandler
                                HttpServerExchange
                                ServerConnection
@@ -289,7 +290,7 @@
   chain asynchronously"
   [^ThreadPoolExecutor pool interceptors connections ^HttpServerExchange exchange]
   (let [input-ch         (chan 16384) ;; TODO this allocation likely needs adaptive tuning
-        input-stream     (protojure.internal.io.InputStream. {:ch input-ch})
+        input-stream     (pio/new-inputstream {:ch input-ch})
         input-status     (open-input-channel exchange input-ch)
         request          {:query-string     (.getQueryString exchange)
                           :request-method   (keyword (string/lower-case (.toString (.getRequestMethod exchange))))

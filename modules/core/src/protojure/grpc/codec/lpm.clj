@@ -9,11 +9,10 @@
             [promesa.core :as p]
             [protojure.protobuf :refer [->pb]]
             [protojure.grpc.codec.compression :as compression]
+            [protojure.internal.io :as pio]
             [clojure.tools.logging :as log]
             [clojure.java.io :as io])
-  (:import (protojure.internal.io InputStream
-                                  OutputStream)
-           (java.io ByteArrayOutputStream)
+  (:import (java.io InputStream OutputStream ByteArrayOutputStream)
            (org.apache.commons.io.input BoundedInputStream))
   (:refer-clojure :exclude [resolve]))
 
@@ -153,7 +152,7 @@ The value for the **content-coding** option must be one of
          (try
            (loop []
              (if-let [buf (<! input)]
-               (let [is (InputStream. {:ch input :tmo tmo :buf buf})]
+               (let [is (pio/new-inputstream {:ch input :tmo tmo :buf buf})]
                  (doseq [msg (decode->seq f is decompressor)]
                    (when (some? msg)
                      (log/trace "Decoded: " msg)
@@ -238,7 +237,7 @@ The _max-frame-size_ option dictates how bytes are encoded on the _output_ chann
 ```
   "
   [f input output {:keys [codecs content-coding max-frame-size] :or {codecs compression/builtin-codecs} :as options}]
-  (let [os (OutputStream. (cond-> {:ch output} (some? max-frame-size) (assoc :max-frame-size max-frame-size)))
+  (let [os (pio/new-outputstream (cond-> {:ch output} (some? max-frame-size) (assoc :max-frame-size max-frame-size)))
         compressor (when (and (some? content-coding) (not= content-coding "identity"))
                      (compression/compressor codecs content-coding))]
     (p/create
