@@ -8,15 +8,14 @@
             [clojure.core.async :as async]
             [clojure.java.io :as io]
             [clojure.string :as string]
-            [clojure.core.async :refer [<!!]])
-  (:import (protojure.internal.io InputStream
-                                  OutputStream)
-           (java.nio ByteBuffer)))
+            [clojure.core.async :refer [<!!]]
+            [protojure.internal.io :as pio])
+  (:import (java.nio ByteBuffer)))
 
 (deftest check-input-eof
   (testing "Verify that our input stream reports EOF"
     (let [input (async/chan 64)
-          stream (InputStream. {:ch input})]
+          stream (pio/new-inputstream {:ch input})]
       (async/close! input)
       (is (-> (.read stream) (= -1)))
       (is (-> (.available stream) (= 0))))))
@@ -28,19 +27,19 @@
   (testing "Verify that our input stream reports available bytes properly"
     (let [input (async/chan 64)
           count 20
-          stream (InputStream. {:ch input :buf (bufferify (repeat count 42))})]
+          stream (pio/new-inputstream {:ch input :buf (bufferify (repeat count 42))})]
       (is (-> (.available stream) (= count))))))
 
 (deftest check-timeout
   (testing "Verify that our input stream's timeout mechanism works"
     (let [input (async/chan 64)
-          stream (InputStream. {:ch input :tmo 100})]
+          stream (pio/new-inputstream {:ch input :tmo 100})]
       (is (thrown? clojure.lang.ExceptionInfo (.read stream))))))
 
 (deftest check-array-read
   (testing "Verify that we can read an array in one call"
     (let [ch (async/chan 64)
-          stream (InputStream. {:ch ch})
+          stream (pio/new-inputstream {:ch ch})
           len 20
           output (byte-array len)]
       (async/put! ch (ByteBuffer/wrap (byte-array (repeat len 42))))
@@ -58,7 +57,7 @@
           phrase "test"
           msg (.getBytes (string/join (repeat repetitions phrase)))
           ch (async/chan (* repetitions (count phrase)))]
-      (with-open [os (OutputStream. {:ch ch :max-frame-size (count phrase)})]
+      (with-open [os (pio/new-outputstream {:ch ch :max-frame-size (count phrase)})]
         (io/copy msg os))
       (let [result (take-available ch)]
         (is (-> result count (= repetitions)))

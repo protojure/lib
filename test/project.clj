@@ -37,7 +37,7 @@
                                   [crypto-random "1.2.1"]]
                    :resource-paths ["test/resources"]}}
   :source-paths ["../modules/io/src" "../modules/core/src" "../modules/grpc-client/src" "../modules/grpc-server/src"]
-  :aot [protojure.internal.io]
+  :java-source-paths ["../modules/io/src"]
   :cloverage {:runner :eftest
               :runner-opts {:multithread? false
                             :fail-fast? true}
