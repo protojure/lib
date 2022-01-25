@@ -204,8 +204,13 @@
     {:grpc-status status :grpc-message message})
 
   (ReturnErrorStreaming
-    [_ {{:keys [status message]} :grpc-params}]
-    {:grpc-status status :grpc-message message})
+    [_ {:keys [grpc-out] {:keys [status message]} :grpc-params}]
+    (let [trailers (async/promise-chan)]
+      (go
+        (<! (async/timeout 500))
+        (async/close! grpc-out)
+        (>! trailers {:grpc-status status :grpc-message message}))
+      {:body grpc-out :trailers trailers}))
 
   (BandwidthTest
     [_ {{:keys [mode]} :grpc-params}]
