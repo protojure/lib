@@ -25,11 +25,6 @@
        (filter supported-encodings)
        (first)))
 
-(defn- generate-trailers
-  [{:keys [grpc-status grpc-message] :or {grpc-status 0}}]
-  (-> {"grpc-status" grpc-status}
-      (cond-> (some? grpc-message) (assoc "grpc-message" grpc-message))))
-
 (defn- create-req-ctx
   [f {:keys [body-ch] {:strs [grpc-encoding] :or {grpc-encoding "identity"}} :headers :as req}]
   (let [in body-ch
@@ -43,12 +38,10 @@
   [f {{:strs [grpc-accept-encoding] :or {grpc-accept-encoding ""}} :headers :as req}]
   (let [in (async/chan 128)
         out (async/chan 128)
-        trailers-ch (async/promise-chan)
         encoding (or (determine-output-encoding grpc-accept-encoding) "identity")]
     {:in       in
      :out      out
      :encoding encoding
-     :trailers-ch trailers-ch
      :status   (lpm/encode f in out {:content-coding encoding :max-frame-size 16383})}))
 
 (defn- set-params [context params]
@@ -73,12 +66,36 @@
         (set-params context params)                         ;; materialize unary params opportunistically,  if available
         (go (set-params context (<! input-ch)))))))         ;; else, defer context until unary params materialize
 
+(defn- take [ch]
+  (p/create
+   (fn [resolve reject]
+     (async/take! ch resolve))))
+
+(defn- put [ch val]
+  (p/create
+   (fn [resolve reject]
+     (async/put! ch val resolve))))
+
+(defn- ->trailers
+  [{:keys [grpc-status grpc-message] :or {grpc-status 0}}]
+  (-> {"grpc-status" grpc-status}
+      (cond-> (some? grpc-message) (assoc "grpc-message" grpc-message))))
+
+(defn- prepare-trailers [{:keys [trailers] :as response}]
+  (let [ch (async/promise-chan)]
+    [ch (fn [_] (-> (if (some? trailers)
+                      (take trailers)
+                      response)
+                    (p/then ->trailers)
+                    (p/then (partial put ch))))]))
+
 (defn- grpc-leave
   "<leave> interceptor for handling GRPC responses"
   [{:keys [server-streaming] :as rpc-metadata}
    {{:keys [body] :as response} :response {:keys [req-ctx resp-ctx]} ::ctx :as context}]
 
-  (let [output-ch (:in resp-ctx)]
+  (let [output-ch (:in resp-ctx)
+        [trailers-ch trailers-fn] (prepare-trailers response)]
 
     (cond
       ;; special-case unary return types
@@ -94,7 +111,8 @@
 
     ;; defer sending trailers until our IO has completed
     (-> (p/all (mapv :status [req-ctx resp-ctx]))
-        (p/then (fn [_] (async/>!! (:trailers-ch resp-ctx) (generate-trailers response))))
+        (p/then trailers-fn)
+        (p/timeout 30000)
         (p/catch (fn [ex]
                    (log/error :msg "Pipeline" :exception ex)
                    (status/error :internal))))
@@ -105,7 +123,7 @@
                                "grpc-encoding" (:encoding resp-ctx)}
                     :status   200                ;; always return 200
                     :body     (:out resp-ctx)
-                    :trailers (:trailers-ch resp-ctx)))))
+                    :trailers trailers-ch))))
 
 (defn route-interceptor
   [rpc-metadata]
@@ -120,7 +138,7 @@
           :headers {"Content-Type" "application/grpc+proto"}
           :status 200
           :body ""
-          :trailers (generate-trailers {:grpc-status status :grpc-message msg})))
+          :trailers (->trailers {:grpc-status status :grpc-message msg})))
 
 (def error-interceptor
   (err/error-dispatch
