@@ -521,6 +521,19 @@
            (p/then (fn [{:keys [message] :as result}]
                      (is (= message "Hello, World"))))))))
 
+(deftest unary-grpc-encoding-exception-check
+  (testing "Check that an error in encoding a protobuf propagates out of pipeline"
+    (let [input (async/chan 1)
+          output (async/chan 16)
+          client (:grpc-client @test-env)
+          desc {:service "example.hello.Greeter"
+                :method "SayHello"
+                :input {:f new-HelloRequest :ch input}
+                :output {:f pb->HelloReply :ch output}}]
+
+      (is (thrown? Exception @(-> (client.utils/send-unary-params input {:name nil})
+                                  (p/then (fn [_] (client.utils/invoke-unary client desc output)))))))))
+
 ;;Note there are qualitative differences between this nil & error check and the below grpc-failing-status-check test
 ;; this test is run against an endpoint registrered in the pedestal interceptor stack, and so exercises
 ;; protojure.pedestal.interceptors.grpc pedestal interceptor, where the aforementioned below test does not
