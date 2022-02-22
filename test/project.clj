@@ -26,6 +26,8 @@
                                   [org.eclipse.jetty/jetty-alpn-java-client]
                                   [lambdaisland/uri]
                                   [org.clojure/tools.logging]
+                                  [org.apache.logging.log4j/log4j-core "2.17.1"]
+                                  [org.apache.logging.log4j/log4j-slf4j-impl "2.17.1"]
                                   [org.clojure/tools.namespace "1.2.0"]
                                   [clj-http "3.12.3"]
                                   [com.taoensso/timbre "5.1.2"]
