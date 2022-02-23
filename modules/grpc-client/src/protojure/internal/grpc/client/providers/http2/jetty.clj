@@ -5,6 +5,7 @@
 
 (ns protojure.internal.grpc.client.providers.http2.jetty
   (:require [promesa.core :as p]
+            [promesa.exec :as p.exec]
             [clojure.core.async :refer [>!! <!! <! >! go go-loop] :as async]
             [clojure.tools.logging :as log])
   (:import (java.net InetSocketAddress)
@@ -200,8 +201,11 @@
                     (log/debug "Session established:" context)
                     context)))
         (p/catch (fn [e]
-                   (.stop client)
-                   (throw e))))))
+                   (p/create
+                    (fn [resolve reject]
+                      (.stop client)                       ;; run (.stop) in a different thread, because p/catch will be called from .connect -> reject
+                      (reject e))
+                    p.exec/default-executor))))))
 
 (defn send-request
   [{:keys [^Session session] :as context}

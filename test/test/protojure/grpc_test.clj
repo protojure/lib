@@ -457,7 +457,9 @@
 (deftest bad-address-check
   (testing "Check that we behave rationally with a bad address"
     (is (thrown? java.util.concurrent.ExecutionException
-                 @(jetty-client/connect {:host "bad.example.com" :port 80})))))
+                 @(jetty-client/connect {:host "bad.example.com" :port 80})))
+    (is (thrown? java.util.concurrent.ExecutionException
+                 @(jetty-client/connect {:host "localhost" :port 1})))))
 
 (deftest echo-check
   (testing "Check that basic connectivity works"
