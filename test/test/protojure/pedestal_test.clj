@@ -51,6 +51,9 @@
 (defn- echo-body [{:keys [body]}]
   {:status 200 :body body})
 
+(defn- json-content [{:keys [json-params] :as req}]
+  {:status 200 :body json-params})
+
 (defn- echo-async [{{:keys [content]} :params}]
   (let [ch (async/chan 1)]
     (go
@@ -68,7 +71,8 @@
    ["/echo/async" :get (conj interceptors `echo-async)]
    ["/testdata" :get (conj interceptors `testdata-download)]
    ["/bytes" :get (conj interceptors `get-bytes)]
-   ["/edn" :get (conj interceptors `get-edn)]])
+   ["/edn" :get (conj interceptors `get-edn)]
+   ["/json" :post (conj interceptors `json-content)]])
 
 ;;-----------------------------------------------------------------------------
 ;; Utilities
@@ -89,7 +93,8 @@
   (let [port (test.utils/get-free-port)
         ssl-port (test.utils/get-free-port)
         interceptors [(body-params/body-params)
-                      http/html-body]
+                      http/html-body
+                      io.pedestal.http/json-body]
         desc {:env                  :prod
               ::http/routes         (into #{} (routes interceptors))
               ::http/port           port
@@ -166,3 +171,8 @@
       (async/close! test-channel)
       (.read in-stream buff 0 5)
       (is (= "Hello" (String. buff))))))
+
+(deftest content-type-check
+  (testing "Check that content-type key is set per [io.pedestal.http.request.map](https://github.com/pedestal/pedestal/blob/master/service/src/io/pedestal/http/request/map.clj) expectations"
+    (is (as-> (client/post (service-url "/json") {:content-type :json :form-params {"content" "FOO"} :as :json-string-keys}) resp
+          (= (:body resp) {"content" "FOO"})))))

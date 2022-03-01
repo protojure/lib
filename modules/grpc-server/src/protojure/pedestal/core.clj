@@ -29,7 +29,8 @@
            (io.undertow.io Receiver$PartialBytesCallback Receiver$ErrorCallback)
            (java.nio ByteBuffer)
            (org.xnio.channels StreamSinkChannel)
-           (java.util.concurrent Executors ThreadPoolExecutor))
+           (java.util.concurrent Executors ThreadPoolExecutor)
+           (clojure.lang IPersistentCollection IFn))
   (:refer-clojure :exclude [resolve flush]))
 
 (set! *warn-on-reflection* true)
@@ -210,9 +211,19 @@
 (defmethod transmit-body nil
   [ch resp-body]
   (p/resolved true))
+(defmethod transmit-body IPersistentCollection
+  [ch resp-body]
+  (transmit-body ch (with-out-str (pr resp-body))))
+(defmethod transmit-body IFn
+  [ch resp-body]
+  (let [os (doto (java.io.ByteArrayOutputStream.)
+             (resp-body))
+        out (String. (.toByteArray os))]
+    (transmit-body ch out)))
 (defmethod transmit-body :default
   [ch resp-body]
   (transmit-body ch (with-out-str (pr resp-body))))
+(prefer-method transmit-body IPersistentCollection IFn)
 
 (defmulti ^:no-doc transmit-trailers
   "Handle transmitting the trailers based on the type"
@@ -292,16 +303,16 @@
   (let [input-ch         (chan 16384) ;; TODO this allocation likely needs adaptive tuning
         input-stream     (pio/new-inputstream {:ch input-ch})
         input-status     (open-input-channel exchange input-ch)
-        request          {:query-string     (.getQueryString exchange)
-                          :request-method   (keyword (string/lower-case (.toString (.getRequestMethod exchange))))
-                          :headers          (get-request-headers exchange)
-                          :body             input-stream
-                          :body-ch          input-ch
-                          :close-ch         (subscribe-close connections exchange)
-                          :uri              (.getRequestURI exchange)
-                          :path-info        (.getRequestPath exchange)
-                          :async-supported? true}]
-
+        request (as-> {:query-string     (.getQueryString exchange)
+                       :request-method   (keyword (string/lower-case (.toString (.getRequestMethod exchange))))
+                       :headers          (get-request-headers exchange)
+                       :body             input-stream
+                       :body-ch          input-ch
+                       :close-ch         (subscribe-close connections exchange)
+                       :uri              (.getRequestURI exchange)
+                       :path-info        (.getRequestPath exchange)
+                       :async-supported? true} req
+                  (assoc req :content-type (get (:headers req) "content-type")))]
     (.execute pool
               (fn []
                 (try
