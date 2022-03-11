@@ -668,8 +668,12 @@
                    @(test.client/Async client {:id input}))))))
 
 (deftest test-grpc-metadata
-  (testing "Check that connection-metadata is sent to the server"
+  (testing "Check that static connection-metadata is sent to the server"
     (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env)) :metadata {"authorization" "Magic"}})]
+      (is (-> @(test.client/Metadata client {}) :msg (= "Hello, Magic")))
+      (grpc/disconnect client)))
+  (testing "Check that dynamic connection-metadata is sent to the server"
+    (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env)) :metadata (constantly {"authorization" "Magic"})})]
       (is (-> @(test.client/Metadata client {}) :msg (= "Hello, Magic")))
       (grpc/disconnect client))))
 

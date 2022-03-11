@@ -22,13 +22,13 @@ Connects the client to a [GRPC-HTTP2](https://github.com/grpc/grpc/blob/master/d
 A map with the following entries:
 
 | Value                 | Type     | Default | Description                                                               |
-|-----------------------|----------|-------------------------------------------------------------------------------------|
-| **uri**               | _String_ | n/a     | The URI of the GRPC server                                                |
-| **codecs**            | _map_    | [[protojure.grpc.codec.core/builtin-codecs]] | Optional custom codecs               |
-| **content-coding**    | _String_ | nil     | The encoding to use on request data                                       |
-| **max-frame-size**    | _UInt32_ | 16KB    | The maximum HTTP2 DATA frame size                                         |
-| **input-buffer-size** | _UInt32_ | 1MB     | The input-buffer size                                                     |
-| **metadata**          | _map_    | n/a     | Optional [string string] tuples that will be submitted as attributes to the request, such as via HTTP headers for GRPC-HTTP2 |
+|-----------------------|---------------|-------------------------------------------------------------------------------------|
+| **uri**               | _String_      | n/a     | The URI of the GRPC server                                                |
+| **codecs**            | _map_         | [[protojure.grpc.codec.core/builtin-codecs]] | Optional custom codecs               |
+| **content-coding**    | _String_      | nil     | The encoding to use on request data                                       |
+| **max-frame-size**    | _UInt32_      | 16KB    | The maximum HTTP2 DATA frame size                                         |
+| **input-buffer-size** | _UInt32_      | 1MB     | The input-buffer size                                                     |
+| **metadata**          | _map_ or _fn_ | n/a     | Optional [string string] tuples as a map, or a 0-arity fn that returns same that will be submitted as attributes to the request, such as via HTTP headers for GRPC-HTTP2 |
 
 #### Return value
 A promise that, on success, evaluates to an instance of [[api/Provider]].
