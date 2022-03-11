@@ -29,6 +29,12 @@
 (defn- codecs-to-accept [codecs]
   (clojure.string/join "," (cons "identity" (keys codecs))))
 
+(defn- compute-metadata
+  [metadata]
+  (if (fn? metadata)
+    (metadata)
+    metadata))
+
 (defn- send-request
   "Sends an HTTP2 based POST request that adheres to the GRPC-HTTP2 specification"
   [context uri codecs content-coding conn-metadata {:keys [metadata service method options] :as params} input-ch meta-ch output-ch]
@@ -37,7 +43,7 @@
                   "grpc-encoding" (or content-coding "identity")
                   "grpc-accept-encoding" (codecs-to-accept codecs)
                   "te" "trailers"}
-                 (merge conn-metadata metadata))
+                 (merge (compute-metadata conn-metadata) metadata))
         url (str uri "/" service "/" method)]
     (jetty/send-request context {:method    "POST"
                                  :url       url
