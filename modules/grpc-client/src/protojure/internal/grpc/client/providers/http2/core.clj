@@ -39,18 +39,20 @@
   "Sends an HTTP2 based POST request that adheres to the GRPC-HTTP2 specification"
   [context uri codecs content-coding conn-metadata {:keys [metadata service method options] :as params} input-ch meta-ch output-ch]
   (log/trace (str "Invoking GRPC \""  service "/" method "\""))
-  (let [hdrs (-> {"content-type" "application/grpc+proto"
-                  "grpc-encoding" (or content-coding "identity")
-                  "grpc-accept-encoding" (codecs-to-accept codecs)
-                  "te" "trailers"}
-                 (merge (compute-metadata conn-metadata) metadata))
-        url (str uri "/" service "/" method)]
-    (jetty/send-request context {:method    "POST"
-                                 :url       url
-                                 :headers   hdrs
-                                 :input-ch  input-ch
-                                 :meta-ch   meta-ch
-                                 :output-ch output-ch})))
+  (-> (compute-metadata conn-metadata)
+      (p/then (fn [conn-metadata]
+                (let [hdrs (-> {"content-type" "application/grpc+proto"
+                                "grpc-encoding" (or content-coding "identity")
+                                "grpc-accept-encoding" (codecs-to-accept codecs)
+                                "te" "trailers"}
+                               (merge conn-metadata metadata))
+                      url (str uri "/" service "/" method)]
+                  (jetty/send-request context {:method    "POST"
+                                               :url       url
+                                               :headers   hdrs
+                                               :input-ch  input-ch
+                                               :meta-ch   meta-ch
+                                               :output-ch output-ch}))))))
 
 (defn- receive-headers
   "Listen on the metadata channel _until_ we receive a status code.  We are interested in both
