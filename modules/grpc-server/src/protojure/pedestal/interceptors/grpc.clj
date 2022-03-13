@@ -66,7 +66,7 @@
         (set-params context params)                         ;; materialize unary params opportunistically,  if available
         (go (set-params context (<! input-ch)))))))         ;; else, defer context until unary params materialize
 
-(defn- take [ch]
+(defn- take-promise [ch]
   (p/create
    (fn [resolve reject]
      (async/take! ch resolve))))
@@ -84,7 +84,7 @@
 (defn- prepare-trailers [{:keys [trailers] :as response}]
   (let [ch (async/promise-chan)]
     [ch (fn [_] (-> (if (some? trailers)
-                      (take trailers)
+                      (take-promise trailers)
                       response)
                     (p/then ->trailers)
                     (p/then (partial put ch))))]))
