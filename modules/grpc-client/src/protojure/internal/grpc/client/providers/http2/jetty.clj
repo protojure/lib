@@ -18,6 +18,8 @@
            (org.eclipse.jetty.http2.frames HeadersFrame
                                            DataFrame)
            (org.eclipse.jetty.util Promise Callback)
+           (org.eclipse.jetty.util.component LifeCycle
+                                             LifeCycle$Listener)
            (org.eclipse.jetty.http HttpFields
                                    HttpField
                                    HttpURI
@@ -221,5 +223,14 @@
 
 (defn disconnect [{:keys [^HTTP2Client client] :as context}]
   (log/debug "Disconnecting:" context)
-  (.stop client)
-  (dissoc context :client :session))
+  (p/create
+   (fn [resolve reject]
+     (let [listener (reify LifeCycle$Listener
+                      (^void lifeCycleFailure [this ^LifeCycle event ^Throwable cause]
+                        (.removeEventListener client this)
+                        (reject cause))
+                      (^void lifeCycleStopped [this ^LifeCycle event]
+                        (.removeEventListener client this)
+                        (resolve (dissoc context :client :session))))]
+       (.addEventListener client listener)
+       (.stop client)))))

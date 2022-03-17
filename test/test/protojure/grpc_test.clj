@@ -280,7 +280,7 @@
     (is (= status 0))))
 
 (defn- scaletest-disconnect [{:keys [client]}]
-  (grpc/disconnect client))
+  @(grpc/disconnect client))
 
 ;;-----------------------------------------------------------------------------
 ;; Streaming Scaletest
@@ -440,8 +440,8 @@
       (swap! test-env assoc :port port :server server :client client :grpc-client grpc-client))))
 
 (defn destroy-service []
-  (swap! test-env update :grpc-client grpc/disconnect)
-  (swap! test-env update :client jetty-client/disconnect)
+  (swap! test-env update :grpc-client #(deref (grpc/disconnect %)))
+  (swap! test-env update :client #(deref (jetty-client/disconnect %)))
   (swap! test-env update :server pedestal/stop))
 
 (defn wrap-service [test-fn]
