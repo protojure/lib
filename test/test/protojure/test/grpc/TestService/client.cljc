@@ -161,8 +161,8 @@
         output (async/chan 1)
         desc {:service "protojure.test.grpc.TestService"
               :method  "ShouldThrow"
-              :input   {:f com.google.protobuf/new-Empty :ch input}
-              :output  {:f com.google.protobuf/pb->Empty :ch output}
+              :input   {:f protojure.test.grpc/new-ShouldThrowRequest :ch input}
+              :output  {:f protojure.test.grpc/pb->ShouldThrowResponse :ch output}
               :metadata metadata}]
     (-> (send-unary-params input params)
         (p/then (fn [_] (invoke-unary client desc output)))))))

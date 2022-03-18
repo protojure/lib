@@ -37,6 +37,12 @@
 (declare cis->BigPayload)
 (declare ecis->BigPayload)
 (declare new-BigPayload)
+(declare cis->ShouldThrowRequest)
+(declare ecis->ShouldThrowRequest)
+(declare new-ShouldThrowRequest)
+(declare cis->ShouldThrowResponse)
+(declare ecis->ShouldThrowResponse)
+(declare new-ShouldThrowResponse)
 
 ;;----------------------------------------------------------------------------------
 ;;----------------------------------------------------------------------------------
@@ -377,4 +383,100 @@
   (cis->BigPayload (serdes.stream/new-cis input)))
 
 (def ^:protojure.protobuf.any/record BigPayload-meta {:type "protojure.test.grpc.BigPayload" :decoder pb->BigPayload})
+
+;-----------------------------------------------------------------------------
+; ShouldThrowRequest
+;-----------------------------------------------------------------------------
+(defrecord ShouldThrowRequest-record [case]
+  pb/Writer
+  (serialize [this os]
+    (serdes.core/write-Int32 1  {:optimize true} (:case this) os))
+  pb/TypeReflection
+  (gettype [this]
+    "protojure.test.grpc.ShouldThrowRequest"))
+
+(s/def :protojure.test.grpc.ShouldThrowRequest/case int?)
+(s/def ::ShouldThrowRequest-spec (s/keys :opt-un [:protojure.test.grpc.ShouldThrowRequest/case ]))
+(def ShouldThrowRequest-defaults {:case 0 })
+
+(defn cis->ShouldThrowRequest
+  "CodedInputStream to ShouldThrowRequest"
+  [is]
+  (->> (tag-map ShouldThrowRequest-defaults
+         (fn [tag index]
+             (case index
+               1 [:case (serdes.core/cis->Int32 is)]
+
+               [index (serdes.core/cis->undefined tag is)]))
+         is)
+        (map->ShouldThrowRequest-record)))
+
+(defn ecis->ShouldThrowRequest
+  "Embedded CodedInputStream to ShouldThrowRequest"
+  [is]
+  (serdes.core/cis->embedded cis->ShouldThrowRequest is))
+
+(defn new-ShouldThrowRequest
+  "Creates a new instance from a map, similar to map->ShouldThrowRequest except that
+  it properly accounts for nested messages, when applicable.
+  "
+  [init]
+  {:pre [(if (s/valid? ::ShouldThrowRequest-spec init) true (throw (ex-info "Invalid input" (s/explain-data ::ShouldThrowRequest-spec init))))]}
+  (-> (merge ShouldThrowRequest-defaults init)
+      (map->ShouldThrowRequest-record)))
+
+(defn pb->ShouldThrowRequest
+  "Protobuf to ShouldThrowRequest"
+  [input]
+  (cis->ShouldThrowRequest (serdes.stream/new-cis input)))
+
+(def ^:protojure.protobuf.any/record ShouldThrowRequest-meta {:type "protojure.test.grpc.ShouldThrowRequest" :decoder pb->ShouldThrowRequest})
+
+;-----------------------------------------------------------------------------
+; ShouldThrowResponse
+;-----------------------------------------------------------------------------
+(defrecord ShouldThrowResponse-record [numbers]
+  pb/Writer
+  (serialize [this os]
+    (serdes.complex/write-repeated serdes.core/write-Int32 1 (:numbers this) os))
+  pb/TypeReflection
+  (gettype [this]
+    "protojure.test.grpc.ShouldThrowResponse"))
+
+(s/def :protojure.test.grpc.ShouldThrowResponse/numbers (s/every int?))
+(s/def ::ShouldThrowResponse-spec (s/keys :opt-un [:protojure.test.grpc.ShouldThrowResponse/numbers ]))
+(def ShouldThrowResponse-defaults {:numbers [] })
+
+(defn cis->ShouldThrowResponse
+  "CodedInputStream to ShouldThrowResponse"
+  [is]
+  (->> (tag-map ShouldThrowResponse-defaults
+         (fn [tag index]
+             (case index
+               1 [:numbers (serdes.complex/cis->packablerepeated tag serdes.core/cis->Int32 is)]
+
+               [index (serdes.core/cis->undefined tag is)]))
+         is)
+        (map->ShouldThrowResponse-record)))
+
+(defn ecis->ShouldThrowResponse
+  "Embedded CodedInputStream to ShouldThrowResponse"
+  [is]
+  (serdes.core/cis->embedded cis->ShouldThrowResponse is))
+
+(defn new-ShouldThrowResponse
+  "Creates a new instance from a map, similar to map->ShouldThrowResponse except that
+  it properly accounts for nested messages, when applicable.
+  "
+  [init]
+  {:pre [(if (s/valid? ::ShouldThrowResponse-spec init) true (throw (ex-info "Invalid input" (s/explain-data ::ShouldThrowResponse-spec init))))]}
+  (-> (merge ShouldThrowResponse-defaults init)
+      (map->ShouldThrowResponse-record)))
+
+(defn pb->ShouldThrowResponse
+  "Protobuf to ShouldThrowResponse"
+  [input]
+  (cis->ShouldThrowResponse (serdes.stream/new-cis input)))
+
+(def ^:protojure.protobuf.any/record ShouldThrowResponse-meta {:type "protojure.test.grpc.ShouldThrowResponse" :decoder pb->ShouldThrowResponse})
 

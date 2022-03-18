@@ -40,12 +40,20 @@ message BigPayload {
     bytes data = 2;
 }
 
+message ShouldThrowRequest {
+    int32 case = 1;
+}
+
+message ShouldThrowResponse {
+    repeated int32 numbers = 1;
+}
+
 service TestService {
     rpc ClientCloseDetect (CloseDetectRequest) returns (stream google.protobuf.Any);
     rpc ServerCloseDetect (google.protobuf.Empty) returns (stream google.protobuf.Any);
     rpc FlowControl (FlowControlRequest) returns (stream FlowControlPayload);
     rpc Metadata (google.protobuf.Empty) returns (SimpleResponse);
-    rpc ShouldThrow (google.protobuf.Empty) returns (google.protobuf.Empty);
+    rpc ShouldThrow (ShouldThrowRequest) returns (ShouldThrowResponse);
     rpc Async (google.protobuf.Empty) returns (SimpleResponse);
     rpc AllEmpty(google.protobuf.Empty) returns (google.protobuf.Empty);
     rpc AsyncEmpty(google.protobuf.Empty) returns (stream google.protobuf.Empty);
