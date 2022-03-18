@@ -39,4 +39,5 @@ clean:
 
 .PHONY: protos
 protos:
-	protoc --clojure_out=grpc-client,grpc-server:test --proto_path=test/resources $(shell find test/resources -name "*.proto" | sed 's|test/resources/||g')
+	mkdir -p test/test/resources
+	protoc --clojure_out=grpc-client,grpc-server:test/test --proto_path=test/test/resources $(shell find test/test/resources -name "*.proto" | sed 's|test/test/resources/||g')
