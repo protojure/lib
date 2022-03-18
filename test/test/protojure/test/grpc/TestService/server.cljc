@@ -24,6 +24,8 @@
   (ReturnErrorStreaming [this param])
   (ShouldThrow [this param]))
 
+(def TestService-service-name "protojure.test.grpc.TestService")
+
 (defn- BandwidthTest-dispatch
   [ctx request]
   (BandwidthTest ctx request))
