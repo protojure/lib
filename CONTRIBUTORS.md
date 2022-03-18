@@ -7,3 +7,4 @@
 - George Lindsell <glindsell@statestreet.com>
 - Sean Harrap <sean.harrap@gmail.com>
 - Enzzo Cavallo <souenzzo@gmail.com>
+- Ryan Sundberg <ryan@arctype.co>
