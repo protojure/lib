@@ -183,8 +183,20 @@
       {:body {:msg (str "Hello, " auth)}}))
 
   (ShouldThrow
-    [_ request]
-    (throw (ex-info "This is supposed to fail" {})))
+    [_ {{test-case :case} :grpc-params}]
+    {:body
+      (case test-case
+        0 (throw (ex-info "This is supposed to fail" {}))
+        ; Non-lazy seq
+        1 {:numbers
+           (mapv (fn [_]
+                   (throw (ex-info "This is also supposed to fail (1)" {})))
+                 (range 3))}
+        ; Lazy seq
+        2 {:numbers
+           (map (fn [n]
+                  (throw (ex-info "This is also supposed to fail (2)" {})))
+                (range 3))})})
 
   (Async
     [_ request]
@@ -261,6 +273,16 @@
 (defmacro check-throw
   [code & body]
   `(-check-throw ~code #(do ~@body)))
+
+(defn is-grpc-error? [grpc-status response-promise]
+  "Asserts that response promise returns a specific gRPC error code, and
+   returns the exception."
+  (let [ex (is (thrown? Exception @response-promise))
+        cause (.getCause ex)
+        code (grpc.status/get-code grpc-status)]
+    (is (some? cause))
+    (is (= code (:status (ex-data cause))))
+    cause))
 
 ;;-----------------------------------------------------------------------------
 ;; Scaletest Assemblies
@@ -680,16 +702,18 @@
 (deftest test-grpc-exception
   (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
     (testing "Check that exceptions thrown on the server propagate back to the client"
-      (is (thrown? java.util.concurrent.ExecutionException
-                   @(test.client/ShouldThrow client {})))
-      (try
-        @(test.client/ShouldThrow client {})
-        (assert false)                                      ;; we should never get here
-        (catch java.util.concurrent.ExecutionException e
-          (let [{:keys [status]} (ex-data (.getCause e))]
-            (is (= status 13))))))
+      (is-grpc-error? :internal (test.client/ShouldThrow client {})))
     (testing "Check that we can still connect even after exceptions have been received"
       (is (-> @(test.client/Async client {}) :msg (= "Hello, Async"))))
+    (grpc/disconnect client)))
+
+(deftest test-grpc-sequence-exception
+  (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
+    (testing "Check that exceptions thrown in sequence mappers on the server propagate back to the client"
+      (testing "Non-lazy: throws in mapv"
+        (is-grpc-error? :internal (test.client/ShouldThrow client {:case 1})))
+      (testing "Lazy: throws in map"
+        (is-grpc-error? :internal (test.client/ShouldThrow client {:case 2}))))
     (grpc/disconnect client)))
 
 (deftest test-grpc-async

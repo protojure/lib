@@ -39,9 +39,10 @@
 ;-----------------------------------------------------------------------------
 (def Person-PhoneType-default :mobile)
 
-(def Person-PhoneType-val2label {0 :mobile
-                                 1 :home
-                                 2 :work})
+(def Person-PhoneType-val2label {
+  0 :mobile
+  1 :home
+  2 :work})
 
 (def Person-PhoneType-label2val (set/map-invert Person-PhoneType-val2label))
 
@@ -57,6 +58,8 @@
   ([tag value os] (write-Person-PhoneType tag {:optimize false} value os))
   ([tag options value os]
    (serdes.core/write-Enum tag options (get-Person-PhoneType value) os)))
+
+
 
 ;;----------------------------------------------------------------------------------
 ;;----------------------------------------------------------------------------------
@@ -82,23 +85,23 @@
 (s/def :com.example.addressbook.Person/id int?)
 (s/def :com.example.addressbook.Person/email string?)
 
-(s/def ::Person-spec (s/keys :opt-un [:com.example.addressbook.Person/name :com.example.addressbook.Person/id :com.example.addressbook.Person/email]))
-(def Person-defaults {:name "" :id 0 :email "" :phones []})
+(s/def ::Person-spec (s/keys :opt-un [:com.example.addressbook.Person/name :com.example.addressbook.Person/id :com.example.addressbook.Person/email ]))
+(def Person-defaults {:name "" :id 0 :email "" :phones [] })
 
 (defn cis->Person
   "CodedInputStream to Person"
   [is]
   (->> (tag-map Person-defaults
-                (fn [tag index]
-                  (case index
-                    1 [:name (serdes.core/cis->String is)]
-                    2 [:id (serdes.core/cis->Int32 is)]
-                    3 [:email (serdes.core/cis->String is)]
-                    4 [:phones (serdes.complex/cis->repeated ecis->Person-PhoneNumber is)]
+         (fn [tag index]
+             (case index
+               1 [:name (serdes.core/cis->String is)]
+               2 [:id (serdes.core/cis->Int32 is)]
+               3 [:email (serdes.core/cis->String is)]
+               4 [:phones (serdes.complex/cis->repeated ecis->Person-PhoneNumber is)]
 
-                    [index (serdes.core/cis->undefined tag is)]))
-                is)
-       (map->Person-record)))
+               [index (serdes.core/cis->undefined tag is)]))
+         is)
+        (map->Person-record)))
 
 (defn ecis->Person
   "Embedded CodedInputStream to Person"
@@ -136,21 +139,21 @@
 
 (s/def :com.example.addressbook.Person-PhoneNumber/number string?)
 (s/def :com.example.addressbook.Person-PhoneNumber/type (s/or :keyword keyword? :int int?))
-(s/def ::Person-PhoneNumber-spec (s/keys :opt-un [:com.example.addressbook.Person-PhoneNumber/number :com.example.addressbook.Person-PhoneNumber/type]))
-(def Person-PhoneNumber-defaults {:number "" :type Person-PhoneType-default})
+(s/def ::Person-PhoneNumber-spec (s/keys :opt-un [:com.example.addressbook.Person-PhoneNumber/number :com.example.addressbook.Person-PhoneNumber/type ]))
+(def Person-PhoneNumber-defaults {:number "" :type Person-PhoneType-default })
 
 (defn cis->Person-PhoneNumber
   "CodedInputStream to Person-PhoneNumber"
   [is]
   (->> (tag-map Person-PhoneNumber-defaults
-                (fn [tag index]
-                  (case index
-                    1 [:number (serdes.core/cis->String is)]
-                    2 [:type (cis->Person-PhoneType is)]
+         (fn [tag index]
+             (case index
+               1 [:number (serdes.core/cis->String is)]
+               2 [:type (cis->Person-PhoneType is)]
 
-                    [index (serdes.core/cis->undefined tag is)]))
-                is)
-       (map->Person-PhoneNumber-record)))
+               [index (serdes.core/cis->undefined tag is)]))
+         is)
+        (map->Person-PhoneNumber-record)))
 
 (defn ecis->Person-PhoneNumber
   "Embedded CodedInputStream to Person-PhoneNumber"
@@ -185,19 +188,19 @@
     "com.example.addressbook.AddressBook"))
 
 (s/def ::AddressBook-spec (s/keys :opt-un []))
-(def AddressBook-defaults {:people []})
+(def AddressBook-defaults {:people [] })
 
 (defn cis->AddressBook
   "CodedInputStream to AddressBook"
   [is]
   (->> (tag-map AddressBook-defaults
-                (fn [tag index]
-                  (case index
-                    1 [:people (serdes.complex/cis->repeated ecis->Person is)]
+         (fn [tag index]
+             (case index
+               1 [:people (serdes.complex/cis->repeated ecis->Person is)]
 
-                    [index (serdes.core/cis->undefined tag is)]))
-                is)
-       (map->AddressBook-record)))
+               [index (serdes.core/cis->undefined tag is)]))
+         is)
+        (map->AddressBook-record)))
 
 (defn ecis->AddressBook
   "Embedded CodedInputStream to AddressBook"

@@ -24,6 +24,8 @@
   (ReturnErrorStreaming [this param])
   (ShouldThrow [this param]))
 
+(def TestService-service-name "protojure.test.grpc.TestService")
+
 (defn- BandwidthTest-dispatch
   [ctx request]
   (BandwidthTest ctx request))
@@ -73,4 +75,4 @@
    {:pkg "protojure.test.grpc" :service "TestService" :method "AsyncEmpty" :method-fn AsyncEmpty-dispatch :server-streaming true :client-streaming false :input com.google.protobuf/pb->Empty :output com.google.protobuf/new-Empty}
    {:pkg "protojure.test.grpc" :service "TestService" :method "Metadata" :method-fn Metadata-dispatch :server-streaming false :client-streaming false :input com.google.protobuf/pb->Empty :output new-SimpleResponse}
    {:pkg "protojure.test.grpc" :service "TestService" :method "ReturnErrorStreaming" :method-fn ReturnErrorStreaming-dispatch :server-streaming true :client-streaming false :input pb->ErrorRequest :output com.google.protobuf/new-Empty}
-   {:pkg "protojure.test.grpc" :service "TestService" :method "ShouldThrow" :method-fn ShouldThrow-dispatch :server-streaming false :client-streaming false :input com.google.protobuf/pb->Empty :output com.google.protobuf/new-Empty}])
+   {:pkg "protojure.test.grpc" :service "TestService" :method "ShouldThrow" :method-fn ShouldThrow-dispatch :server-streaming false :client-streaming false :input pb->ShouldThrowRequest :output new-ShouldThrowResponse}])
