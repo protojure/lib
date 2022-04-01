@@ -17,7 +17,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^{:const true :no-doc true} supported-encodings (set (keys protojure.grpc.codec.compression/builtin-codecs)))
+(def ^{:const true :no-doc true} supported-encodings (-> protojure.grpc.codec.compression/builtin-codecs (keys) (conj "identity") (set)))
 
 (defn- determine-output-encoding
   [accepted-encodings]
