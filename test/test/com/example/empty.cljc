@@ -39,20 +39,18 @@
 
 (defn convert-Selection-opt [origkeyval]
   (cond
-     (get-in origkeyval [:opt :e]) (update-in origkeyval [:opt :e] new-Empty)
-     (get-in origkeyval [:opt :ne]) (update-in origkeyval [:opt :ne] new-NonEmpty)
-     :default origkeyval))
+    (get-in origkeyval [:opt :e]) (update-in origkeyval [:opt :e] new-Empty)
+    (get-in origkeyval [:opt :ne]) (update-in origkeyval [:opt :ne] new-NonEmpty)
+    :default origkeyval))
 
 (defn write-Selection-opt [opt os]
   (let [field (first opt)
         k (when-not (nil? field) (key field))
         v (when-not (nil? field) (val field))]
-     (case k
-         :e (serdes.core/write-embedded 1 v os)
-         :ne (serdes.core/write-embedded 2 v os)
-         nil)))
-
-
+    (case k
+      :e (serdes.core/write-embedded 1 v os)
+      :ne (serdes.core/write-embedded 2 v os)
+      nil)))
 
 ;;----------------------------------------------------------------------------------
 ;;----------------------------------------------------------------------------------
@@ -65,8 +63,7 @@
 ;-----------------------------------------------------------------------------
 (defrecord Empty-record []
   pb/Writer
-  (serialize [this os]
-)
+  (serialize [this os])
   pb/TypeReflection
   (gettype [this]
     "com.example.empty.Empty"))
@@ -78,11 +75,11 @@
   "CodedInputStream to Empty"
   [is]
   (->> (tag-map Empty-defaults
-         (fn [tag index]
-             (case index
-               [index (serdes.core/cis->undefined tag is)]))
-         is)
-        (map->Empty-record)))
+                (fn [tag index]
+                  (case index
+                    [index (serdes.core/cis->undefined tag is)]))
+                is)
+       (map->Empty-record)))
 
 (defn ecis->Empty
   "Embedded CodedInputStream to Empty"
@@ -117,20 +114,20 @@
     "com.example.empty.NonEmpty"))
 
 (s/def :com.example.empty.NonEmpty/i int?)
-(s/def ::NonEmpty-spec (s/keys :opt-un [:com.example.empty.NonEmpty/i ]))
-(def NonEmpty-defaults {:i 0 })
+(s/def ::NonEmpty-spec (s/keys :opt-un [:com.example.empty.NonEmpty/i]))
+(def NonEmpty-defaults {:i 0})
 
 (defn cis->NonEmpty
   "CodedInputStream to NonEmpty"
   [is]
   (->> (tag-map NonEmpty-defaults
-         (fn [tag index]
-             (case index
-               1 [:i (serdes.core/cis->Int32 is)]
+                (fn [tag index]
+                  (case index
+                    1 [:i (serdes.core/cis->Int32 is)]
 
-               [index (serdes.core/cis->undefined tag is)]))
-         is)
-        (map->NonEmpty-record)))
+                    [index (serdes.core/cis->undefined tag is)]))
+                is)
+       (map->NonEmpty-record)))
 
 (defn ecis->NonEmpty
   "Embedded CodedInputStream to NonEmpty"
@@ -171,14 +168,14 @@
   "CodedInputStream to Selection"
   [is]
   (->> (tag-map Selection-defaults
-         (fn [tag index]
-             (case index
-               1 [:opt {:e (ecis->Empty is)}]
-               2 [:opt {:ne (ecis->NonEmpty is)}]
+                (fn [tag index]
+                  (case index
+                    1 [:opt {:e (ecis->Empty is)}]
+                    2 [:opt {:ne (ecis->NonEmpty is)}]
 
-               [index (serdes.core/cis->undefined tag is)]))
-         is)
-        (map->Selection-record)))
+                    [index (serdes.core/cis->undefined tag is)]))
+                is)
+       (map->Selection-record)))
 
 (defn ecis->Selection
   "Embedded CodedInputStream to Selection"
@@ -221,14 +218,14 @@
   "CodedInputStream to Container"
   [is]
   (->> (tag-map Container-defaults
-         (fn [tag index]
-             (case index
-               1 [:e (ecis->Empty is)]
-               2 [:ne (ecis->NonEmpty is)]
+                (fn [tag index]
+                  (case index
+                    1 [:e (ecis->Empty is)]
+                    2 [:ne (ecis->NonEmpty is)]
 
-               [index (serdes.core/cis->undefined tag is)]))
-         is)
-        (map->Container-record)))
+                    [index (serdes.core/cis->undefined tag is)]))
+                is)
+       (map->Container-record)))
 
 (defn ecis->Container
   "Embedded CodedInputStream to Container"
