@@ -52,11 +52,10 @@
 ;-----------------------------------------------------------------------------
 (def BigPayload-Mode-default :mode-invalid)
 
-(def BigPayload-Mode-val2label {
-  0 :mode-invalid
-  1 :mode-upload
-  2 :mode-download
-  3 :mode-bidi})
+(def BigPayload-Mode-val2label {0 :mode-invalid
+                                1 :mode-upload
+                                2 :mode-download
+                                3 :mode-bidi})
 
 (def BigPayload-Mode-label2val (set/map-invert BigPayload-Mode-val2label))
 
@@ -72,8 +71,6 @@
   ([tag value os] (write-BigPayload-Mode tag {:optimize false} value os))
   ([tag options value os]
    (serdes.core/write-Enum tag options (get-BigPayload-Mode value) os)))
-
-
 
 ;;----------------------------------------------------------------------------------
 ;;----------------------------------------------------------------------------------
@@ -93,20 +90,20 @@
     "protojure.test.grpc.CloseDetectRequest"))
 
 (s/def :protojure.test.grpc.CloseDetectRequest/id string?)
-(s/def ::CloseDetectRequest-spec (s/keys :opt-un [:protojure.test.grpc.CloseDetectRequest/id ]))
-(def CloseDetectRequest-defaults {:id "" })
+(s/def ::CloseDetectRequest-spec (s/keys :opt-un [:protojure.test.grpc.CloseDetectRequest/id]))
+(def CloseDetectRequest-defaults {:id ""})
 
 (defn cis->CloseDetectRequest
   "CodedInputStream to CloseDetectRequest"
   [is]
   (->> (tag-map CloseDetectRequest-defaults
-         (fn [tag index]
-             (case index
-               1 [:id (serdes.core/cis->String is)]
+                (fn [tag index]
+                  (case index
+                    1 [:id (serdes.core/cis->String is)]
 
-               [index (serdes.core/cis->undefined tag is)]))
-         is)
-        (map->CloseDetectRequest-record)))
+                    [index (serdes.core/cis->undefined tag is)]))
+                is)
+       (map->CloseDetectRequest-record)))
 
 (defn ecis->CloseDetectRequest
   "Embedded CodedInputStream to CloseDetectRequest"
@@ -143,21 +140,21 @@
 
 (s/def :protojure.test.grpc.FlowControlRequest/count int?)
 (s/def :protojure.test.grpc.FlowControlRequest/payload-size int?)
-(s/def ::FlowControlRequest-spec (s/keys :opt-un [:protojure.test.grpc.FlowControlRequest/count :protojure.test.grpc.FlowControlRequest/payload-size ]))
-(def FlowControlRequest-defaults {:count 0 :payload-size 0 })
+(s/def ::FlowControlRequest-spec (s/keys :opt-un [:protojure.test.grpc.FlowControlRequest/count :protojure.test.grpc.FlowControlRequest/payload-size]))
+(def FlowControlRequest-defaults {:count 0 :payload-size 0})
 
 (defn cis->FlowControlRequest
   "CodedInputStream to FlowControlRequest"
   [is]
   (->> (tag-map FlowControlRequest-defaults
-         (fn [tag index]
-             (case index
-               1 [:count (serdes.core/cis->Int32 is)]
-               2 [:payload-size (serdes.core/cis->Int32 is)]
+                (fn [tag index]
+                  (case index
+                    1 [:count (serdes.core/cis->Int32 is)]
+                    2 [:payload-size (serdes.core/cis->Int32 is)]
 
-               [index (serdes.core/cis->undefined tag is)]))
-         is)
-        (map->FlowControlRequest-record)))
+                    [index (serdes.core/cis->undefined tag is)]))
+                is)
+       (map->FlowControlRequest-record)))
 
 (defn ecis->FlowControlRequest
   "Embedded CodedInputStream to FlowControlRequest"
@@ -194,21 +191,21 @@
 
 (s/def :protojure.test.grpc.FlowControlPayload/id int?)
 (s/def :protojure.test.grpc.FlowControlPayload/data bytes?)
-(s/def ::FlowControlPayload-spec (s/keys :opt-un [:protojure.test.grpc.FlowControlPayload/id :protojure.test.grpc.FlowControlPayload/data ]))
-(def FlowControlPayload-defaults {:id 0 :data (byte-array 0) })
+(s/def ::FlowControlPayload-spec (s/keys :opt-un [:protojure.test.grpc.FlowControlPayload/id :protojure.test.grpc.FlowControlPayload/data]))
+(def FlowControlPayload-defaults {:id 0 :data (byte-array 0)})
 
 (defn cis->FlowControlPayload
   "CodedInputStream to FlowControlPayload"
   [is]
   (->> (tag-map FlowControlPayload-defaults
-         (fn [tag index]
-             (case index
-               1 [:id (serdes.core/cis->Int32 is)]
-               2 [:data (serdes.core/cis->Bytes is)]
+                (fn [tag index]
+                  (case index
+                    1 [:id (serdes.core/cis->Int32 is)]
+                    2 [:data (serdes.core/cis->Bytes is)]
 
-               [index (serdes.core/cis->undefined tag is)]))
-         is)
-        (map->FlowControlPayload-record)))
+                    [index (serdes.core/cis->undefined tag is)]))
+                is)
+       (map->FlowControlPayload-record)))
 
 (defn ecis->FlowControlPayload
   "Embedded CodedInputStream to FlowControlPayload"
@@ -243,20 +240,20 @@
     "protojure.test.grpc.SimpleRequest"))
 
 (s/def :protojure.test.grpc.SimpleRequest/input string?)
-(s/def ::SimpleRequest-spec (s/keys :opt-un [:protojure.test.grpc.SimpleRequest/input ]))
-(def SimpleRequest-defaults {:input "" })
+(s/def ::SimpleRequest-spec (s/keys :opt-un [:protojure.test.grpc.SimpleRequest/input]))
+(def SimpleRequest-defaults {:input ""})
 
 (defn cis->SimpleRequest
   "CodedInputStream to SimpleRequest"
   [is]
   (->> (tag-map SimpleRequest-defaults
-         (fn [tag index]
-             (case index
-               1 [:input (serdes.core/cis->String is)]
+                (fn [tag index]
+                  (case index
+                    1 [:input (serdes.core/cis->String is)]
 
-               [index (serdes.core/cis->undefined tag is)]))
-         is)
-        (map->SimpleRequest-record)))
+                    [index (serdes.core/cis->undefined tag is)]))
+                is)
+       (map->SimpleRequest-record)))
 
 (defn ecis->SimpleRequest
   "Embedded CodedInputStream to SimpleRequest"
@@ -291,20 +288,20 @@
     "protojure.test.grpc.SimpleResponse"))
 
 (s/def :protojure.test.grpc.SimpleResponse/msg string?)
-(s/def ::SimpleResponse-spec (s/keys :opt-un [:protojure.test.grpc.SimpleResponse/msg ]))
-(def SimpleResponse-defaults {:msg "" })
+(s/def ::SimpleResponse-spec (s/keys :opt-un [:protojure.test.grpc.SimpleResponse/msg]))
+(def SimpleResponse-defaults {:msg ""})
 
 (defn cis->SimpleResponse
   "CodedInputStream to SimpleResponse"
   [is]
   (->> (tag-map SimpleResponse-defaults
-         (fn [tag index]
-             (case index
-               1 [:msg (serdes.core/cis->String is)]
+                (fn [tag index]
+                  (case index
+                    1 [:msg (serdes.core/cis->String is)]
 
-               [index (serdes.core/cis->undefined tag is)]))
-         is)
-        (map->SimpleResponse-record)))
+                    [index (serdes.core/cis->undefined tag is)]))
+                is)
+       (map->SimpleResponse-record)))
 
 (defn ecis->SimpleResponse
   "Embedded CodedInputStream to SimpleResponse"
@@ -341,21 +338,21 @@
 
 (s/def :protojure.test.grpc.ErrorRequest/status int?)
 (s/def :protojure.test.grpc.ErrorRequest/message string?)
-(s/def ::ErrorRequest-spec (s/keys :opt-un [:protojure.test.grpc.ErrorRequest/status :protojure.test.grpc.ErrorRequest/message ]))
-(def ErrorRequest-defaults {:status 0 :message "" })
+(s/def ::ErrorRequest-spec (s/keys :opt-un [:protojure.test.grpc.ErrorRequest/status :protojure.test.grpc.ErrorRequest/message]))
+(def ErrorRequest-defaults {:status 0 :message ""})
 
 (defn cis->ErrorRequest
   "CodedInputStream to ErrorRequest"
   [is]
   (->> (tag-map ErrorRequest-defaults
-         (fn [tag index]
-             (case index
-               1 [:status (serdes.core/cis->Int32 is)]
-               2 [:message (serdes.core/cis->String is)]
+                (fn [tag index]
+                  (case index
+                    1 [:status (serdes.core/cis->Int32 is)]
+                    2 [:message (serdes.core/cis->String is)]
 
-               [index (serdes.core/cis->undefined tag is)]))
-         is)
-        (map->ErrorRequest-record)))
+                    [index (serdes.core/cis->undefined tag is)]))
+                is)
+       (map->ErrorRequest-record)))
 
 (defn ecis->ErrorRequest
   "Embedded CodedInputStream to ErrorRequest"
@@ -392,21 +389,21 @@
 
 (s/def :protojure.test.grpc.BigPayload/mode (s/or :keyword keyword? :int int?))
 (s/def :protojure.test.grpc.BigPayload/data bytes?)
-(s/def ::BigPayload-spec (s/keys :opt-un [:protojure.test.grpc.BigPayload/mode :protojure.test.grpc.BigPayload/data ]))
-(def BigPayload-defaults {:mode BigPayload-Mode-default :data (byte-array 0) })
+(s/def ::BigPayload-spec (s/keys :opt-un [:protojure.test.grpc.BigPayload/mode :protojure.test.grpc.BigPayload/data]))
+(def BigPayload-defaults {:mode BigPayload-Mode-default :data (byte-array 0)})
 
 (defn cis->BigPayload
   "CodedInputStream to BigPayload"
   [is]
   (->> (tag-map BigPayload-defaults
-         (fn [tag index]
-             (case index
-               1 [:mode (cis->BigPayload-Mode is)]
-               2 [:data (serdes.core/cis->Bytes is)]
+                (fn [tag index]
+                  (case index
+                    1 [:mode (cis->BigPayload-Mode is)]
+                    2 [:data (serdes.core/cis->Bytes is)]
 
-               [index (serdes.core/cis->undefined tag is)]))
-         is)
-        (map->BigPayload-record)))
+                    [index (serdes.core/cis->undefined tag is)]))
+                is)
+       (map->BigPayload-record)))
 
 (defn ecis->BigPayload
   "Embedded CodedInputStream to BigPayload"
