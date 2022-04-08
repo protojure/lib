@@ -28,6 +28,9 @@
 (declare cis->FlowControlPayload)
 (declare ecis->FlowControlPayload)
 (declare new-FlowControlPayload)
+(declare cis->SimpleRequest)
+(declare ecis->SimpleRequest)
+(declare new-SimpleRequest)
 (declare cis->SimpleResponse)
 (declare ecis->SimpleResponse)
 (declare new-SimpleResponse)
@@ -227,6 +230,54 @@
   (cis->FlowControlPayload (serdes.stream/new-cis input)))
 
 (def ^:protojure.protobuf.any/record FlowControlPayload-meta {:type "protojure.test.grpc.FlowControlPayload" :decoder pb->FlowControlPayload})
+
+;-----------------------------------------------------------------------------
+; SimpleRequest
+;-----------------------------------------------------------------------------
+(defrecord SimpleRequest-record [input]
+  pb/Writer
+  (serialize [this os]
+    (serdes.core/write-String 1  {:optimize true} (:input this) os))
+  pb/TypeReflection
+  (gettype [this]
+    "protojure.test.grpc.SimpleRequest"))
+
+(s/def :protojure.test.grpc.SimpleRequest/input string?)
+(s/def ::SimpleRequest-spec (s/keys :opt-un [:protojure.test.grpc.SimpleRequest/input ]))
+(def SimpleRequest-defaults {:input "" })
+
+(defn cis->SimpleRequest
+  "CodedInputStream to SimpleRequest"
+  [is]
+  (->> (tag-map SimpleRequest-defaults
+         (fn [tag index]
+             (case index
+               1 [:input (serdes.core/cis->String is)]
+
+               [index (serdes.core/cis->undefined tag is)]))
+         is)
+        (map->SimpleRequest-record)))
+
+(defn ecis->SimpleRequest
+  "Embedded CodedInputStream to SimpleRequest"
+  [is]
+  (serdes.core/cis->embedded cis->SimpleRequest is))
+
+(defn new-SimpleRequest
+  "Creates a new instance from a map, similar to map->SimpleRequest except that
+  it properly accounts for nested messages, when applicable.
+  "
+  [init]
+  {:pre [(if (s/valid? ::SimpleRequest-spec init) true (throw (ex-info "Invalid input" (s/explain-data ::SimpleRequest-spec init))))]}
+  (-> (merge SimpleRequest-defaults init)
+      (map->SimpleRequest-record)))
+
+(defn pb->SimpleRequest
+  "Protobuf to SimpleRequest"
+  [input]
+  (cis->SimpleRequest (serdes.stream/new-cis input)))
+
+(def ^:protojure.protobuf.any/record SimpleRequest-meta {:type "protojure.test.grpc.SimpleRequest" :decoder pb->SimpleRequest})
 
 ;-----------------------------------------------------------------------------
 ; SimpleResponse

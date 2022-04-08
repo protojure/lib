@@ -19,6 +19,10 @@ message FlowControlPayload {
     bytes data = 2;
 }
 
+message SimpleRequest {
+    string input = 1;
+}
+
 message SimpleResponse {
     string msg = 1;
 }
@@ -53,4 +57,5 @@ service TestService {
     rpc ReturnError(ErrorRequest) returns (google.protobuf.Empty);
     rpc ReturnErrorStreaming(ErrorRequest) returns (stream google.protobuf.Empty);
     rpc BandwidthTest(BigPayload) returns (BigPayload);
+    rpc BidirectionalStreamTest(stream SimpleRequest) returns (stream SimpleResponse);
 }

@@ -215,7 +215,18 @@
   (BandwidthTest
     [_ {{:keys [mode]} :grpc-params}]
     (cond-> {}
-      (contains? download-types mode) (assoc-in [:body :data] bandwidth-payload))))
+      (contains? download-types mode) (assoc-in [:body :data] bandwidth-payload)))
+
+  (BidirectionalStreamTest
+    [_ {grpc-out :grpc-out
+        grpc-params :grpc-params}]
+    (go
+      (loop []
+        (when-let [next-msg (async/<! grpc-params)]
+          (async/>! grpc-out {:msg (:input next-msg)})
+          (recur)))
+      (async/close! grpc-out))
+    {:body grpc-out}))
 
 (defn- greeter-mock-routes [interceptors]
   (pedestal.routes/->tablesyntax {:rpc-metadata greeter/rpc-metadata
@@ -760,3 +771,18 @@
   (testing "Check bidi bandwidth of e2e"
     (test-bandwidth :mode-bidi)))
 
+(deftest test-bidirectional-stream
+  (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
+    (testing "Bidirectional stream echoes requests"
+      (let [input (async/chan)
+            output (async/chan)
+            rpc (test.client/BidirectionalStreamTest client input output)]
+        (async/>!! input {:input "hello"})
+        (let [[result _] (async/alts!! [output (async/timeout 500)])]
+          (is (data-equal? result {:msg "hello"})))
+        (async/>!! input {:input "world"})
+        (let [[result _] (async/alts!! [output (async/timeout 500)])]
+          (is (data-equal? result {:msg "world"})))
+        (async/close! input)
+        (is (nil? (async/<!! output)))
+        (is (some? rpc))))))
