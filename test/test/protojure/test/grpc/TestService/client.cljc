@@ -30,6 +30,16 @@
     (-> (send-unary-params input params)
         (p/then (fn [_] (invoke-unary client desc output)))))))
 
+(defn BidirectionalStreamTest
+  ([client params reply] (BidirectionalStreamTest client {} params reply))
+  ([client metadata params reply]
+  (let [desc {:service "protojure.test.grpc.TestService"
+              :method  "BidirectionalStreamTest"
+              :input   {:f protojure.test.grpc/new-SimpleRequest :ch params}
+              :output  {:f protojure.test.grpc/pb->SimpleResponse :ch reply}
+              :metadata metadata}]
+    (grpc/invoke client desc))))
+
 (defn ClientCloseDetect
   ([client params reply] (ClientCloseDetect client {} params reply))
   ([client metadata params reply]
