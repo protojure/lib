@@ -30,7 +30,8 @@
            (java.nio ByteBuffer)
            (org.xnio.channels StreamSinkChannel)
            (java.util.concurrent Executors ThreadPoolExecutor)
-           (clojure.lang IPersistentCollection IFn))
+           (clojure.lang IPersistentCollection IFn)
+           (java.time LocalTime))
   (:refer-clojure :exclude [resolve flush]))
 
 (set! *warn-on-reflection* true)
@@ -159,10 +160,15 @@
   (log/debug "closing output channel" exchange)
   (try
     (.shutdownWrites ch)
-    (loop []
-      (if (.flush ch)                                       ;; hard-flush in a loop until the channel is drained
-        (.close ch)
-        (recur)))
+    (let [deadline (.plusSeconds (LocalTime/now) 30)]
+      (loop []
+        (if (.flush ch)                                       ;; hard-flush in a loop until the channel is drained
+          (.close ch)
+          (if (.isBefore (LocalTime/now) deadline)
+            (do
+              (Thread/sleep 10)
+              (recur))
+            (throw (ex-info "failed to flush output-channel" {}))))))
     (catch Exception e
       (log/error :msg "close-output-channel"
                  :exception e)))
