@@ -7,6 +7,7 @@
   (:require [clojure.test :refer :all]
             [clojure.string :as string]
             [clojure.core.async :refer [<!! >!! <! >! go go-loop] :as async]
+            [bond.james :as bond]
             [promesa.core :as p]
             [io.pedestal.http :as pedestal]
             [io.pedestal.http.body-params :as body-params]
@@ -497,6 +498,25 @@
       (is (-> result :status (= 200)))
       (is (-> result :body String. (= (string/join (repeat 10 "OK")))))
       (is (data-equal? trailers test-trailers)))))
+
+(deftest ssl-check
+  (let [verify-example (fn [input expected]
+                         (bond/with-stub! [[jetty-client/connect (constantly nil)]]
+                           @(grpc.http2/connect input)
+                           (let [args (map :args (bond/calls jetty-client/connect))]
+                             (is (= 1 (count args)) "Expected only one call to connect")
+                             (is (= [{:ssl expected}]
+                                    (map #(select-keys % [:ssl]) (first args)))))))]
+    (testing "ssl parameter false when not provided and uri is http"
+      (verify-example {:uri "http://localhost:1234"} false))
+    (testing "ssl parameter true when not provided and uri is https"
+      (verify-example {:uri "https://localhost:1234"} true))
+    (testing "ssl parameter true when not provided and uri is HTTPS"
+      (verify-example {:uri "HTTPS://localhost:1234"} true))
+    (testing "ssl parameter to connect used when provided, even when uri denotes https"
+      (for [uri ["http://localhost:1234" "https://localhost:1234"]
+            b [false true]]
+        (verify-example {:uri uri :ssl b} b)))))
 
 (deftest basic-grpc-check
   (testing "Check that a round-trip GRPC request works"
