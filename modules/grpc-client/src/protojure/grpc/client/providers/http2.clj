@@ -10,7 +10,7 @@
             [protojure.grpc.codec.compression :refer [builtin-codecs]]
             [promesa.core :as p]
             [lambdaisland.uri :as lambdaisland]
-            [clojure.string :refer [starts-with? lower-case]]
+            [clojure.string :refer [lower-case]]
             [clojure.tools.logging :as log]))
 
 (set! *warn-on-reflection* true)
@@ -38,9 +38,10 @@ _(api/disconnect)_ should be used to release any resources when the connection i
   [{:keys [uri codecs content-coding max-frame-size input-buffer-size metadata idle-timeout ssl] :or {codecs builtin-codecs max-frame-size 16384 input-buffer-size jetty/default-input-buffer} :as params}]
   (log/debug "Connecting with GRPC-HTTP2:" params)
   (let [{:keys [host port scheme]} (lambdaisland/uri uri)
+        https? (= "https" (lower-case scheme))
         parsed-port (cond
                       port (Integer/parseInt port)
-                      (= scheme "https") 443
+                      https? 443
                       :else 80)]
-    (-> (jetty/connect {:host host :port parsed-port :input-buffer-size input-buffer-size :idle-timeout idle-timeout :ssl (or ssl (starts-with? (lower-case uri) "https://"))})
+    (-> (jetty/connect {:host host :port parsed-port :input-buffer-size input-buffer-size :idle-timeout idle-timeout :ssl (or ssl https?)})
         (p/then #(core/->Http2Provider % uri codecs content-coding max-frame-size input-buffer-size metadata)))))
