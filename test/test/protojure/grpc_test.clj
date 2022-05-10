@@ -499,14 +499,19 @@
       (is (-> result :body String. (= (string/join (repeat 10 "OK")))))
       (is (data-equal? trailers test-trailers)))))
 
+(defn- verify-one-call-to-connect
+  [input]
+  (bond/with-stub! [[jetty-client/connect (constantly nil)]]
+    @(grpc.http2/connect input)
+    (let [args (map :args (bond/calls jetty-client/connect))]
+      (is (= 1 (count args)) "Expected only one call to connect")
+      (first args))))
+
 (deftest ssl-check
   (let [verify-example (fn [input expected]
-                         (bond/with-stub! [[jetty-client/connect (constantly nil)]]
-                           @(grpc.http2/connect input)
-                           (let [args (map :args (bond/calls jetty-client/connect))]
-                             (is (= 1 (count args)) "Expected only one call to connect")
-                             (is (= [{:ssl expected}]
-                                    (map #(select-keys % [:ssl]) (first args)))))))]
+                         (let [args (verify-one-call-to-connect input)]
+                           (is (= [{:ssl expected}]
+                                  (map #(select-keys % [:ssl]) args)))))]
     (testing "ssl parameter false when not provided and uri is http"
       (verify-example {:uri "http://localhost:1234"} false))
     (testing "ssl parameter true when not provided and uri is https"
@@ -517,6 +522,20 @@
       (for [uri ["http://localhost:1234" "https://localhost:1234"]
             b [false true]]
         (verify-example {:uri uri :ssl b} b)))))
+
+(deftest port-check
+  (let [verify-example (fn [input expected-host expected-port]
+                         (let [args (verify-one-call-to-connect input)]
+                           (is (= [{:host expected-host :port expected-port}]
+                                  (map #(select-keys % [:host :port]) args)))))]
+    (testing "port is used when in uri even when scheme provided is http"
+      (verify-example {:uri "http://localhost:12345"} "localhost" 12345))
+    (testing "port is used when in uri even when scheme provided is https"
+      (verify-example {:uri "https://localhost:45678"} "localhost" 45678))
+    (testing "port defaults to 80 when not in uri and scheme is http"
+      (verify-example {:uri "http://localhost"} "localhost" 80))
+    (testing "port defaults to 443 when not in uri and scheme is https"
+      (verify-example {:uri "https://localhost"} "localhost" 443))))
 
 (deftest basic-grpc-check
   (testing "Check that a round-trip GRPC request works"
