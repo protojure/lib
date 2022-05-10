@@ -10,6 +10,7 @@
             [protojure.grpc.codec.compression :refer [builtin-codecs]]
             [promesa.core :as p]
             [lambdaisland.uri :as lambdaisland]
+            [clojure.string :refer [starts-with? lower-case]]
             [clojure.tools.logging :as log]))
 
 (set! *warn-on-reflection* true)
@@ -34,8 +35,8 @@ A map with the following entries:
 A promise that, on success, evaluates to an instance of [[api/Provider]].
 _(api/disconnect)_ should be used to release any resources when the connection is no longer required.
   "
-  [{:keys [uri codecs content-coding max-frame-size input-buffer-size metadata idle-timeout ssl] :or {codecs builtin-codecs max-frame-size 16384 input-buffer-size jetty/default-input-buffer ssl false} :as params}]
+  [{:keys [uri codecs content-coding max-frame-size input-buffer-size metadata idle-timeout ssl] :or {codecs builtin-codecs max-frame-size 16384 input-buffer-size jetty/default-input-buffer} :as params}]
   (log/debug "Connecting with GRPC-HTTP2:" params)
   (let [{:keys [host port]} (lambdaisland/uri uri)]
-    (-> (jetty/connect {:host host :port (Integer/parseInt port) :input-buffer-size input-buffer-size :idle-timeout idle-timeout :ssl ssl})
+    (-> (jetty/connect {:host host :port (Integer/parseInt port) :input-buffer-size input-buffer-size :idle-timeout idle-timeout :ssl (or ssl (starts-with? (lower-case uri) "https://"))})
         (p/then #(core/->Http2Provider % uri codecs content-coding max-frame-size input-buffer-size metadata)))))

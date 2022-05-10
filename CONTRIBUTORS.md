@@ -8,3 +8,4 @@
 - Sean Harrap <sean.harrap@gmail.com>
 - Enzzo Cavallo <souenzzo@gmail.com>
 - Ryan Sundberg <ryan@arctype.co>
+- James Vickers <james.vickers@reifyhealth.com>
