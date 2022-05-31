@@ -26,6 +26,7 @@
            (io.undertow.util HeaderMap
                              HttpString)
            (java.io InputStream)
+           (java.net InetSocketAddress InetAddress)
            (io.undertow.io Receiver$PartialBytesCallback Receiver$ErrorCallback)
            (java.nio ByteBuffer)
            (org.xnio.channels StreamSinkChannel)
@@ -46,6 +47,14 @@
   [^HttpServerExchange exchange]
   (let [headers (.getRequestHeaders exchange)]
     (reduce (partial assoc-header headers) {} (.getHeaderNames headers))))
+
+(defn- get-ssl-client-cert
+  "Defensively retrivies SSL client certificate from exchange."
+  [^HttpServerExchange exchange]
+  (try
+    (some-> exchange (.getConnection) (.getSslSessionInfo) (.getPeerCertificateChain))
+    (catch Exception _
+      nil)))
 
 (defn- write-trailers
   "Places the <string, string> tuples representing trailers to undertow with a putAttachment operation"
@@ -309,16 +318,38 @@
   (let [input-ch         (chan 16384) ;; TODO this allocation likely needs adaptive tuning
         input-stream     (pio/new-inputstream {:ch input-ch})
         input-status     (open-input-channel exchange input-ch)
-        request (as-> {:query-string     (.getQueryString exchange)
-                       :request-method   (keyword (string/lower-case (.toString (.getRequestMethod exchange))))
-                       :headers          (get-request-headers exchange)
-                       :body             input-stream
-                       :body-ch          input-ch
-                       :close-ch         (subscribe-close connections exchange)
-                       :uri              (.getRequestURI exchange)
-                       :path-info        (.getRequestPath exchange)
-                       :async-supported? true} req
-                  (assoc req :content-type (get (:headers req) "content-type")))]
+        headers          (get-request-headers exchange)
+        ssl-cert         (get-ssl-client-cert exchange)
+        request (cond-> {:query-string     (.getQueryString exchange)
+                         :request-method   (keyword (string/lower-case (.toString (.getRequestMethod exchange))))
+                         :headers          headers
+                         :body             input-stream
+                         :body-ch          input-ch
+                         :close-ch         (subscribe-close connections exchange)
+                         :uri              (.getRequestURI exchange)
+                         :path-info        (.getRequestPath exchange)
+                         :protocol         (.toString (.getProtocol exchange))
+                         :remote-addr      (some-> exchange
+                                                   (.getConnection)
+                                                   ^InetSocketAddress (.getPeerAddress InetSocketAddress)
+                                                   ^InetAddress (.getAddress)
+                                                   (.getHostAddress))
+                         :server-name      (.getHostName exchange)
+                         :server-port      (.getHostPort exchange)
+                         :scheme           (keyword (.getRequestScheme exchange))
+                         :async-supported? true}
+                  (contains? headers "content-type")
+                  (assoc :content-type (get headers "content-type"))
+
+                  (not (neg? (.getRequestContentLength exchange)))
+                  (assoc :content-length (.getRequestContentLength exchange))
+
+                  (some? (.getRequestCharset exchange))
+                  (assoc :character-encoding (.getRequestCharset exchange))
+
+                  (seq ssl-cert)
+                  (assoc :ssl-client-cert ssl-cert))]
+
     (.execute pool
               (fn []
                 (try
