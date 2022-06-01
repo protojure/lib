@@ -9,3 +9,4 @@
 - Enzzo Cavallo <souenzzo@gmail.com>
 - Ryan Sundberg <ryan@arctype.co>
 - James Vickers <james.vickers@reifyhealth.com>
+- Janos Meszaros <meszaros.jns@gmail.com>
