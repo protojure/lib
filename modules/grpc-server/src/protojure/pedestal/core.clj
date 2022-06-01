@@ -271,7 +271,7 @@
 (defn add-close-listener [^ServerConnection conn f]
   (.addCloseListener conn f))
 
-(defn conn-id [conn]
+(defn conn-id [^ServerConnection conn]
   (-> conn .getPeerAddress hash))
 
 (defn subscribe-close [connections ^HttpServerExchange exchange]
@@ -310,46 +310,48 @@
      (let [response-handler (pedestal.interceptors/on-response ::container resolve)]
        (pedestal.chain/execute {:request request} (cons response-handler interceptors))))))
 
+(defn- make-request-map [input-ch connections ^HttpServerExchange exchange]
+  (let [input-stream (pio/new-inputstream {:ch input-ch})
+        headers      (get-request-headers exchange)
+        ssl-cert     (get-ssl-client-cert exchange)]
+    (cond-> {:query-string     (.getQueryString exchange)
+             :request-method   (keyword (string/lower-case (.toString (.getRequestMethod exchange))))
+             :headers          headers
+             :body             input-stream
+             :body-ch          input-ch
+             :close-ch         (subscribe-close connections exchange)
+             :uri              (.getRequestURI exchange)
+             :path-info        (.getRequestPath exchange)
+             :protocol         (.toString (.getProtocol exchange))
+             :remote-addr      (some-> exchange
+                                       (.getConnection)
+                                       ^InetSocketAddress (.getPeerAddress InetSocketAddress)
+                                       ^InetAddress (.getAddress)
+                                       (.getHostAddress))
+             :server-name      (.getHostName exchange)
+             :server-port      (.getHostPort exchange)
+             :scheme           (keyword (.getRequestScheme exchange))
+             :async-supported? true}
+      (contains? headers "content-type")
+      (assoc :content-type (get headers "content-type"))
+
+      (not (neg? (.getRequestContentLength exchange)))
+      (assoc :content-length (.getRequestContentLength exchange))
+
+      (some? (.getRequestCharset exchange))
+      (assoc :character-encoding (.getRequestCharset exchange))
+
+      (seq ssl-cert)
+      (assoc :ssl-client-cert ssl-cert))))
+
 (defn- handle-request
   "Our main handler - Every request arriving at the undertow endpoint
   filters through this function.  We decode it and then invoke our pedestal
   chain asynchronously"
   [^ThreadPoolExecutor pool interceptors connections ^HttpServerExchange exchange]
   (let [input-ch         (chan 16384) ;; TODO this allocation likely needs adaptive tuning
-        input-stream     (pio/new-inputstream {:ch input-ch})
         input-status     (open-input-channel exchange input-ch)
-        headers          (get-request-headers exchange)
-        ssl-cert         (get-ssl-client-cert exchange)
-        request (cond-> {:query-string     (.getQueryString exchange)
-                         :request-method   (keyword (string/lower-case (.toString (.getRequestMethod exchange))))
-                         :headers          headers
-                         :body             input-stream
-                         :body-ch          input-ch
-                         :close-ch         (subscribe-close connections exchange)
-                         :uri              (.getRequestURI exchange)
-                         :path-info        (.getRequestPath exchange)
-                         :protocol         (.toString (.getProtocol exchange))
-                         :remote-addr      (some-> exchange
-                                                   (.getConnection)
-                                                   ^InetSocketAddress (.getPeerAddress InetSocketAddress)
-                                                   ^InetAddress (.getAddress)
-                                                   (.getHostAddress))
-                         :server-name      (.getHostName exchange)
-                         :server-port      (.getHostPort exchange)
-                         :scheme           (keyword (.getRequestScheme exchange))
-                         :async-supported? true}
-                  (contains? headers "content-type")
-                  (assoc :content-type (get headers "content-type"))
-
-                  (not (neg? (.getRequestContentLength exchange)))
-                  (assoc :content-length (.getRequestContentLength exchange))
-
-                  (some? (.getRequestCharset exchange))
-                  (assoc :character-encoding (.getRequestCharset exchange))
-
-                  (seq ssl-cert)
-                  (assoc :ssl-client-cert ssl-cert))]
-
+        request          (make-request-map input-ch connections exchange)]
     (.execute pool
               (fn []
                 (try
