@@ -37,11 +37,12 @@
   (:import [java.nio ByteBuffer])
   (:refer-clojure :exclude [resolve]))
 
-(log/set-config! {:level :error
-                  :ns-whitelist ["protojure.*"]
-                  :appenders {:println (appenders/println-appender {:stream :auto})}})
+(defn init-logging []
+  (log/set-config! {:level :error
+                    :ns-whitelist ["protojure.*"]
+                    :appenders {:println (appenders/println-appender {:stream :auto})}})
 
-(use-timbre)
+  (use-timbre))
 
 ;;-----------------------------------------------------------------------------
 ;; Data
@@ -446,6 +447,7 @@
                        ::pedestal/chain-provider protojure.pedestal/provider}
         client-params {:port port :idle-timeout -1}]
 
+    (init-logging)
     (let [server (test.utils/start-pedestal-server server-params)
           client @(jetty-client/connect client-params)
           grpc-client (grpc-connect port)]
