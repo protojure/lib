@@ -13,7 +13,7 @@
             [io.pedestal.interceptor.error :as err]
             [io.pedestal.log :as log]
             [protojure.grpc.status :as grpc.status])
-  (:import [java.nio ByteBuffer]))
+  (:import [java.util UUID]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,18 +25,21 @@
        (filter supported-encodings)
        (first)))
 
+(defn logging-chan [bufsiz id label]
+  (async/chan bufsiz (map (fn [m] (log/trace (str "GRPC: " id " -> " label) m) m))))
+
 (defn- create-req-ctx
-  [f {:keys [body-ch] {:strs [grpc-encoding] :or {grpc-encoding "identity"}} :headers :as req}]
+  [id f {:keys [body-ch] {:strs [grpc-encoding] :or {grpc-encoding "identity"}} :headers :as req}]
   (let [in body-ch
-        out (async/chan 128)]
+        out (logging-chan 128 id "rx")]
     {:in       in
      :out      out
      :encoding grpc-encoding
      :status   (lpm/decode f in out {:content-coding grpc-encoding})}))
 
 (defn- create-resp-ctx
-  [f {{:strs [grpc-accept-encoding] :or {grpc-accept-encoding ""}} :headers :as req}]
-  (let [in (async/chan 128)
+  [id f {{:strs [grpc-accept-encoding] :or {grpc-accept-encoding ""}} :headers :as req}]
+  (let [in (logging-chan 128 id "tx")
         out (async/chan 128)
         encoding (or (determine-output-encoding grpc-accept-encoding) "identity")]
     {:in       in
@@ -47,17 +50,26 @@
 (defn- set-params [context params]
   (assoc-in context [:request :grpc-params] params))
 
+(defn gen-uuid []
+  (.toString (UUID/randomUUID)))
+
+(defn method-desc [{:keys [pkg service method]}]
+  (str pkg "." service "/" method))
+
 (defn- grpc-enter
   "<enter> interceptor for handling GRPC requests"
   [{:keys [server-streaming client-streaming input output] :as rpc-metadata}
    {:keys [request] :as context}]
-  (let [req-ctx (create-req-ctx input request)
-        resp-ctx (create-resp-ctx output request)
+  (let [id       (gen-uuid)
+        req-ctx  (create-req-ctx id input request)
+        resp-ctx (create-resp-ctx id output request)
         input-ch (:out req-ctx)
-        context (-> context
-                    (assoc ::ctx {:req-ctx req-ctx :resp-ctx resp-ctx})
-                    (cond-> server-streaming
-                      (assoc-in [:request :grpc-out] (:in resp-ctx))))]
+        context  (-> context
+                     (assoc ::ctx {:req-ctx req-ctx :resp-ctx resp-ctx :id id})
+                     (cond-> server-streaming
+                       (assoc-in [:request :grpc-out] (:in resp-ctx))))]
+
+    (log/trace (str "GRPC: " id " -> start " (method-desc rpc-metadata)) request)
 
     ;; set :grpc-params
     (if client-streaming
@@ -81,21 +93,25 @@
   (-> {"grpc-status" grpc-status}
       (cond-> (some? grpc-message) (assoc "grpc-message" grpc-message))))
 
-(defn- prepare-trailers [{:keys [trailers] :as response}]
+(defn- prepare-trailers [id {:keys [trailers] :as response}]
   (let [ch (async/promise-chan)]
     [ch (fn [_] (-> (if (some? trailers)
                       (take-promise trailers)
                       response)
                     (p/then ->trailers)
-                    (p/then (partial put ch))))]))
+                    (p/then (fn [r]
+                              (log/trace (str "GRPC: " id " -> trailers") r)
+                              (put ch r)))))]))
 
 (defn- grpc-leave
   "<leave> interceptor for handling GRPC responses"
   [{:keys [server-streaming] :as rpc-metadata}
-   {{:keys [body] :as response} :response {:keys [req-ctx resp-ctx]} ::ctx :as context}]
+   {{:keys [body] :as response} :response {:keys [req-ctx resp-ctx id]} ::ctx :as context}]
+
+  (log/trace (str "GRPC: " id " -> leave ") response)
 
   (let [output-ch (:in resp-ctx)
-        [trailers-ch trailers-fn] (prepare-trailers response)]
+        [trailers-ch trailers-fn] (prepare-trailers id response)]
 
     (cond
       ;; special-case unary return types
@@ -112,6 +128,8 @@
     ;; defer sending trailers until our IO has completed
     (-> (p/all (mapv :status [req-ctx resp-ctx]))
         (p/then trailers-fn)
+        (p/then (fn [_]
+                  (log/trace (str "GRPC: " id " -> complete ") nil)))
         (p/timeout 30000)
         (p/catch (fn [ex]
                    (log/error :msg "Pipeline" :exception ex)
