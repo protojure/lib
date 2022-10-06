@@ -20,6 +20,7 @@
             [clj-uuid :as uuid]
             [protojure.pedestal.core :as protojure.pedestal]
             [protojure.pedestal.routes :as pedestal.routes]
+            [protojure.pedestal.interceptors.authz :as authz]
             [protojure.grpc.client.api :as grpc]
             [protojure.grpc.client.providers.http2 :as grpc.http2]
             [protojure.internal.grpc.client.providers.http2.jetty :as jetty-client]
@@ -411,25 +412,11 @@
          (p/then (fn [[_ response body]]
                    (assoc response :body body))))))
 
-;;-----------------------------------------------------------------------------
-;; Security Interceptor
-;;-----------------------------------------------------------------------------
-(defn- permission-denied
-  "Terminates the context with a 401 status"
-  [context]
-  (-> context
-      (assoc :response {:status 401})
-      (terminate)))
-
-(defn- deny-streamer
-  "This interceptor will always deny calls to the DeniedStreamer interface"
-  [{{:keys [path-info]} :request :as context}]
-  (cond-> context
-    (= path-info "/protojure.test.grpc.TestService/DeniedStreamer") permission-denied))
-
-(def reject-denied-streamer
-  (interceptor
-   {:name ::require-auth :enter deny-streamer}))
+(defn- authorize?
+  [{{:keys [method]} :grpc-requestinfo}]
+  ;; This authz predicate will always deny calls to the DeniedStreamer interface.  A real implementation would probably
+  ;; look at other criteria, such as the callers credentials
+  (not= method "DeniedStreamer"))
 
 ;;-----------------------------------------------------------------------------
 ;; Fixtures
@@ -438,7 +425,8 @@
   (let [port (test.utils/get-free-port)
         interceptors [(body-params/body-params)
                       pedestal/html-body
-                      reject-denied-streamer]
+                      (authz/interceptor [greeter/rpc-metadata] authorize?) ;; install the interceptor twice to test both vector and non-vector metadata
+                      (authz/interceptor test.server/rpc-metadata authorize?)]
         server-params {:env                      :prod
                        ::pedestal/routes         (into #{} (routes interceptors))
                        ::pedestal/port           port
@@ -779,8 +767,7 @@
   (testing "Check that a streaming GRPC that encounters a permission denied terminates properly"
     (let [output (async/chan 1)
           client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
-      (is (thrown? java.util.concurrent.ExecutionException
-                   @(test.client/DeniedStreamer client {} output)))
+      (check-throw 7 @(test.client/DeniedStreamer client {} output))
       (grpc/disconnect client))))
 
 (deftest test-grpc-error
