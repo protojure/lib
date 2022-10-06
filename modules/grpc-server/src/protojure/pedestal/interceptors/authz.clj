@@ -5,14 +5,24 @@
 (ns protojure.pedestal.interceptors.authz
   "A [Pedestal](http://pedestal.io/) [interceptor](http://pedestal.io/reference/interceptors) for authorizing Protojure GRPC endpoints"
   (:require [io.pedestal.interceptor :as pedestal]
+            [io.pedestal.interceptor.chain :refer [terminate]]
             [protojure.pedestal.interceptors.grpc :as grpc]
             [protojure.grpc.status :as grpc.status]))
+
+(defn- http-permission-denied
+  "Terminates the context with a 401 status"
+  [context]
+  (-> context
+      (assoc :response {:status 401})
+      (terminate)))
 
 (defn- authz-enter
   [m pred {{:keys [path-info] :as request} :request :as context}]
   (let [e (get m path-info)]
     (if-not (pred (cond-> request (some? e) (assoc :grpc-requestinfo e)))
-      (grpc.status/error :permission-denied)
+      (if (some? e)
+        (grpc.status/error :permission-denied)
+        (http-permission-denied context))
       context)))
 
 (defn- nested?

@@ -9,6 +9,7 @@
             [io.pedestal.http :as http]
             [io.pedestal.http.body-params :as body-params]
             [protojure.pedestal.core :as protojure.pedestal]
+            [protojure.pedestal.interceptors.authz :as authz]
             [protojure.test.utils :as test.utils]
             [protojure.internal.io :as pio]
             [clj-http.client :as client]
@@ -64,6 +65,10 @@
 (defn- testdata-download [_]
   {:status 200 :body (io/as-file (io/resource "testdata.txt"))})
 
+(defn- get-denied [_]
+  ;; we should never get here
+  {:status 200})
+
 (defn routes [interceptors]
   [["/healthz" :get (conj interceptors `get-healthz)]
    ["/echo" :get (conj interceptors `echo-params)]
@@ -72,7 +77,14 @@
    ["/testdata" :get (conj interceptors `testdata-download)]
    ["/bytes" :get (conj interceptors `get-bytes)]
    ["/edn" :get (conj interceptors `get-edn)]
-   ["/json" :post (conj interceptors `json-content)]])
+   ["/json" :post (conj interceptors `json-content)]
+   ["/denied" :get (conj interceptors `get-denied)]])
+
+(defn- authorize?
+  [{:keys [path-info] :as request}]
+  ;; This authz predicate will always deny calls to the /denied endpoint.  A real implementation would probably
+  ;; look at other criteria, such as the callers credentials
+  (not= path-info "/denied"))
 
 ;;-----------------------------------------------------------------------------
 ;; Utilities
@@ -86,6 +98,20 @@
   [& rest]
   (apply str "https://localhost:" (:ssl-port @test-svc) rest))
 
+(defn -check-throw
+  [code f]
+  (is (thrown? clojure.lang.ExceptionInfo
+               (try
+                 (f)
+                 (catch Exception e
+                   (let [{:keys [status]} (ex-data e)]
+                     (is (= code status)))
+                   (throw e))))))
+
+(defmacro check-throw
+  [code & body]
+  `(-check-throw ~code #(do ~@body)))
+
 ;;-----------------------------------------------------------------------------
 ;; Fixtures
 ;;-----------------------------------------------------------------------------
@@ -94,7 +120,8 @@
         ssl-port (test.utils/get-free-port)
         interceptors [(body-params/body-params)
                       http/html-body
-                      io.pedestal.http/json-body]
+                      io.pedestal.http/json-body
+                      (authz/interceptor nil authorize?)]
         desc {:env                  :prod
               ::http/routes         (into #{} (routes interceptors))
               ::http/port           port
@@ -159,7 +186,7 @@
 
 (deftest notfound-check
   (testing "Check that a request for an invalid resource correctly propagates the error code"
-    (is (thrown? clojure.lang.ExceptionInfo (client/get (service-url "/invalid"))))))
+    (check-throw 404 (client/get (service-url "/invalid")))))
 
 (deftest read-check
   (testing "Check that bytes entered to channel are properly read from InputStream"
@@ -176,3 +203,7 @@
   (testing "Check that content-type key is set per [io.pedestal.http.request.map](https://github.com/pedestal/pedestal/blob/master/service/src/io/pedestal/http/request/map.clj) expectations"
     (is (as-> (client/post (service-url "/json") {:content-type :json :form-params {"content" "FOO"} :as :json-string-keys}) resp
           (= (:body resp) {"content" "FOO"})))))
+
+(deftest denied-check
+  (testing "Check that a request for an explicitly denied"
+    (check-throw 401 (client/get (service-url "/denied")))))
