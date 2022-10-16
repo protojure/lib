@@ -207,7 +207,7 @@
                     (fn [resolve reject]
                       (.stop client)                       ;; run (.stop) in a different thread, because p/catch will be called from .connect -> reject
                       (reject e))
-                    p.exec/default-executor))))))
+                    p.exec/*default-executor*))))))
 
 (defn send-request
   [{:keys [^Session session] :as context}

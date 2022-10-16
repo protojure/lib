@@ -5,10 +5,10 @@
             :url "https://www.apache.org/licenses/LICENSE-2.0"
             :year 2022
             :key "apache-2.0"}
-  :plugins [[lein-cljfmt "0.8.0"]
+  :plugins [[lein-cljfmt "0.9.0"]
             [lein-set-version "0.4.1"]
-            [lein-cloverage "1.2.2"]
-            [lein-parent "0.3.8"]]
+            [lein-cloverage "1.2.3"]
+            [lein-parent "0.3.9"]]
   :parent-project {:path "../project.clj"
                    :inherit [:managed-dependencies :javac-options]}
   :profiles {:dev {:dependencies   [[org.clojure/clojure]
@@ -30,9 +30,9 @@
                                     [clj-http "3.12.3"]
                                     [com.taoensso/timbre "5.2.1"]
                                     [com.fzakaria/slf4j-timbre "0.3.21"]
-                                    [org.slf4j/jul-to-slf4j "1.7.36"]
-                                    [org.slf4j/jcl-over-slf4j "1.7.36"]
-                                    [org.slf4j/log4j-over-slf4j "1.7.36"]
+                                    [org.slf4j/jul-to-slf4j "2.0.3"]
+                                    [org.slf4j/jcl-over-slf4j "2.0.3"]
+                                    [org.slf4j/log4j-over-slf4j "2.0.3"]
                                     [org.clojure/data.codec "0.1.1"]
                                     [org.clojure/data.generators "1.0.0"]
                                     [danlentz/clj-uuid "0.1.9"]
