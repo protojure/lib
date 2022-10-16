@@ -1,4 +1,4 @@
-(def protojure-version "2.4.2-SNAPSHOT")
+(def protojure-version "2.5.0-SNAPSHOT")
 
 (defproject io.github.protojure/lib-suite "0.0.1"
   :description "Support libraries for protoc-gen-clojure, providing native Clojure support for Google Protocol Buffers and GRPC applications"
@@ -15,9 +15,9 @@
                          [com.google.protobuf/protobuf-java "3.21.7"]
                          [org.apache.commons/commons-compress "1.21"]
                          [commons-io/commons-io "2.11.0"]
-                         [funcool/promesa "9.0.462"]
-                         [io.undertow/undertow-core "2.2.19.Final"]
-                         [io.undertow/undertow-servlet "2.2.19.Final"]
+                         [funcool/promesa "9.0.477"]
+                         [io.undertow/undertow-core "2.2.20.Final"]
+                         [io.undertow/undertow-servlet "2.2.20.Final"]
                          [io.pedestal/pedestal.log "0.5.10"]
                          [io.pedestal/pedestal.service "0.5.10"]
                          [org.eclipse.jetty.http2/http2-client "11.0.12"]
