@@ -1,4 +1,4 @@
-(defproject io.github.protojure/io "2.5.01-SNAPSHOT"
+(defproject io.github.protojure/io "2.6.0"
   :description "IO library to support io.github.protojure/core"
   :url "http://github.com/protojure/lib"
   :license {:name "Apache License 2.0"

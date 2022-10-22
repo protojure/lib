@@ -1,4 +1,4 @@
-(def protojure-version "2.5.01-SNAPSHOT")
+(def protojure-version "2.6.0")
 
 (defproject io.github.protojure/lib-suite "0.0.1"
   :description "Support libraries for protoc-gen-clojure, providing native Clojure support for Google Protocol Buffers and GRPC applications"

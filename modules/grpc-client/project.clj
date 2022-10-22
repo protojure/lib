@@ -1,4 +1,4 @@
-(defproject io.github.protojure/grpc-client "2.5.01-SNAPSHOT"
+(defproject io.github.protojure/grpc-client "2.6.0"
   :description "GRPC client library for protoc-gen-clojure"
   :url "http://github.com/protojure/lib"
   :license {:name "Apache License 2.0"
