@@ -6,6 +6,7 @@
 (ns protojure.pedestal.routes
   "Utilities for generating GRPC endpoints as [Pedestal Routes](http://pedestal.io/guides/defining-routes)"
   (:require [protojure.pedestal.interceptors.grpc :as grpc]
+            [protojure.pedestal.interceptors.authz :as authz]
             [protojure.pedestal.interceptors.grpc-web :as grpc.web]
             [io.pedestal.interceptor :as pedestal]
             [clojure.core.async :refer [<! go]]))
@@ -31,7 +32,7 @@
 
 (defn ->tablesyntax
   "Generates routes in [Table Syntax](http://pedestal.io/reference/table-syntax) format"
-  [{:keys [rpc-metadata interceptors callback-context] :as options}]
+  [{:keys [rpc-metadata interceptors callback-context authorizer] :as options}]
   (for [{:keys [pkg service method method-fn] :as rpc} rpc-metadata]
     (let [fqs (str pkg "." service)
           name (keyword fqs (str method "-handler"))
@@ -39,6 +40,7 @@
       [(str "/" fqs "/" method)
        :post (-> (consv grpc/error-interceptor interceptors)
                  (conj grpc.web/proxy
-                       (grpc/route-interceptor rpc)
-                       handler))
+                       (grpc/route-interceptor rpc))
+                 (cond-> (some? authorizer) (conj (authz/interceptor rpc-metadata authorizer)))
+                 (conj handler))
        :route-name name])))

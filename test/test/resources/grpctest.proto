@@ -44,6 +44,15 @@ message BigPayload {
     bytes data = 2;
 }
 
+message AuthzTestRequest {
+    enum Type {
+        REQUEST_GOOD = 0;
+        REQUEST_BAD  = 1;
+    }
+
+    Type type = 1;
+}
+
 service TestService {
     rpc ClientCloseDetect (CloseDetectRequest) returns (stream google.protobuf.Any);
     rpc ServerCloseDetect (google.protobuf.Empty) returns (stream google.protobuf.Any);
@@ -58,4 +67,5 @@ service TestService {
     rpc ReturnErrorStreaming(ErrorRequest) returns (stream google.protobuf.Empty);
     rpc BandwidthTest(BigPayload) returns (BigPayload);
     rpc BidirectionalStreamTest(stream SimpleRequest) returns (stream SimpleResponse);
+    rpc AuthzTest(AuthzTestRequest) returns (google.protobuf.Empty);
 }

@@ -40,6 +40,9 @@
 (declare cis->BigPayload)
 (declare ecis->BigPayload)
 (declare new-BigPayload)
+(declare cis->AuthzTestRequest)
+(declare ecis->AuthzTestRequest)
+(declare new-AuthzTestRequest)
 
 ;;----------------------------------------------------------------------------------
 ;;----------------------------------------------------------------------------------
@@ -71,6 +74,29 @@
   ([tag value os] (write-BigPayload-Mode tag {:optimize false} value os))
   ([tag options value os]
    (serdes.core/write-Enum tag options (get-BigPayload-Mode value) os)))
+
+;-----------------------------------------------------------------------------
+; AuthzTestRequest-Type
+;-----------------------------------------------------------------------------
+(def AuthzTestRequest-Type-default :request-good)
+
+(def AuthzTestRequest-Type-val2label {0 :request-good
+                                      1 :request-bad})
+
+(def AuthzTestRequest-Type-label2val (set/map-invert AuthzTestRequest-Type-val2label))
+
+(defn cis->AuthzTestRequest-Type [is]
+  (let [val (serdes.core/cis->Enum is)]
+    (get AuthzTestRequest-Type-val2label val val)))
+
+(defn- get-AuthzTestRequest-Type [value]
+  {:pre [(or (int? value) (contains? AuthzTestRequest-Type-label2val value))]}
+  (get AuthzTestRequest-Type-label2val value value))
+
+(defn write-AuthzTestRequest-Type
+  ([tag value os] (write-AuthzTestRequest-Type tag {:optimize false} value os))
+  ([tag options value os]
+   (serdes.core/write-Enum tag options (get-AuthzTestRequest-Type value) os)))
 
 ;;----------------------------------------------------------------------------------
 ;;----------------------------------------------------------------------------------
@@ -425,4 +451,52 @@
   (cis->BigPayload (serdes.stream/new-cis input)))
 
 (def ^:protojure.protobuf.any/record BigPayload-meta {:type "protojure.test.grpc.BigPayload" :decoder pb->BigPayload})
+
+;-----------------------------------------------------------------------------
+; AuthzTestRequest
+;-----------------------------------------------------------------------------
+(defrecord AuthzTestRequest-record [type]
+  pb/Writer
+  (serialize [this os]
+    (write-AuthzTestRequest-Type 1  {:optimize true} (:type this) os))
+  pb/TypeReflection
+  (gettype [this]
+    "protojure.test.grpc.AuthzTestRequest"))
+
+(s/def :protojure.test.grpc.AuthzTestRequest/type (s/or :keyword keyword? :int int?))
+(s/def ::AuthzTestRequest-spec (s/keys :opt-un [:protojure.test.grpc.AuthzTestRequest/type]))
+(def AuthzTestRequest-defaults {:type AuthzTestRequest-Type-default})
+
+(defn cis->AuthzTestRequest
+  "CodedInputStream to AuthzTestRequest"
+  [is]
+  (->> (tag-map AuthzTestRequest-defaults
+                (fn [tag index]
+                  (case index
+                    1 [:type (cis->AuthzTestRequest-Type is)]
+
+                    [index (serdes.core/cis->undefined tag is)]))
+                is)
+       (map->AuthzTestRequest-record)))
+
+(defn ecis->AuthzTestRequest
+  "Embedded CodedInputStream to AuthzTestRequest"
+  [is]
+  (serdes.core/cis->embedded cis->AuthzTestRequest is))
+
+(defn new-AuthzTestRequest
+  "Creates a new instance from a map, similar to map->AuthzTestRequest except that
+  it properly accounts for nested messages, when applicable.
+  "
+  [init]
+  {:pre [(if (s/valid? ::AuthzTestRequest-spec init) true (throw (ex-info "Invalid input" (s/explain-data ::AuthzTestRequest-spec init))))]}
+  (-> (merge AuthzTestRequest-defaults init)
+      (map->AuthzTestRequest-record)))
+
+(defn pb->AuthzTestRequest
+  "Protobuf to AuthzTestRequest"
+  [input]
+  (cis->AuthzTestRequest (serdes.stream/new-cis input)))
+
+(def ^:protojure.protobuf.any/record AuthzTestRequest-meta {:type "protojure.test.grpc.AuthzTestRequest" :decoder pb->AuthzTestRequest})
 

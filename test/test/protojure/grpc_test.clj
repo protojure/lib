@@ -114,6 +114,19 @@
    ["/protojure.http2-test/InvalidStatus" :post (conj interceptors `grpc-invalid-status)]
    ["/protojure.http2-test/BadEncoding" :post (conj interceptors `grpc-bad-encoding)]])
 
+(defn- pre-authorize?
+  [{{:keys [method]} :grpc-requestinfo}]
+  ;; This authz predicate will always deny calls to the DeniedStreamer interface.  A real implementation would probably
+  ;; look at other criteria, such as the callers credentials
+  (not= method "DeniedStreamer"))
+
+(defn- post-authorize?
+  [{{:keys [method]} :grpc-requestinfo {:keys [type]} :grpc-params}]
+  ;; This authz predicate will allow any call if it is not AuthzTest, and will allow AuthzTest only if the 'type' is :request-good
+  ;; demonstrating that the function has access to the GRPC params
+  (or (not= method "AuthzTest")
+      (= type :request-good)))
+
 ;;-----------------------------------------------------------------------------
 ;; "Greeter" service endpoint
 ;;-----------------------------------------------------------------------------
@@ -229,7 +242,11 @@
           (async/>! grpc-out {:msg (:input next-msg)})
           (recur)))
       (async/close! grpc-out))
-    {:body grpc-out}))
+    {:body grpc-out})
+
+  (AuthzTest
+    [_ _]
+    {}))
 
 (defn- greeter-mock-routes [interceptors]
   (pedestal.routes/->tablesyntax {:rpc-metadata greeter/rpc-metadata
@@ -239,6 +256,7 @@
 (defn- testservice-mock-routes [interceptors]
   (pedestal.routes/->tablesyntax {:rpc-metadata test.server/rpc-metadata
                                   :interceptors interceptors
+                                  :authorizer post-authorize?
                                   :callback-context (TestService.)}))
 
 (defn routes [interceptors]
@@ -412,12 +430,6 @@
          (p/then (fn [[_ response body]]
                    (assoc response :body body))))))
 
-(defn- authorize?
-  [{{:keys [method]} :grpc-requestinfo}]
-  ;; This authz predicate will always deny calls to the DeniedStreamer interface.  A real implementation would probably
-  ;; look at other criteria, such as the callers credentials
-  (not= method "DeniedStreamer"))
-
 ;;-----------------------------------------------------------------------------
 ;; Fixtures
 ;;-----------------------------------------------------------------------------
@@ -425,8 +437,8 @@
   (let [port (test.utils/get-free-port)
         interceptors [(body-params/body-params)
                       pedestal/html-body
-                      (authz/interceptor [greeter/rpc-metadata] authorize?) ;; install the interceptor twice to test both vector and non-vector metadata
-                      (authz/interceptor test.server/rpc-metadata authorize?)]
+                      (authz/interceptor [greeter/rpc-metadata] pre-authorize?) ;; install the interceptor twice to test both vector and non-vector metadata
+                      (authz/interceptor test.server/rpc-metadata pre-authorize?)]
         server-params {:env                      :prod
                        ::pedestal/routes         (into #{} (routes interceptors))
                        ::pedestal/port           port
@@ -814,3 +826,11 @@
         (async/close! input)
         (is (nil? (async/<!! output)))
         (is (some? rpc))))))
+
+(deftest test-post-authz
+  (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
+    (testing "verify that we can pass with :request-good"
+      @(test.client/AuthzTest client {:type :request-good}))
+    (testing "verify that we cannot pass with :request-bad"
+      (check-throw 7 @(test.client/AuthzTest client {:type :request-bad})))
+    (grpc/disconnect client)))
