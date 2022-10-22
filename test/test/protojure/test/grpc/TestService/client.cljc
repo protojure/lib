@@ -164,6 +164,19 @@
      (-> (send-unary-params input params)
          (p/then (fn [_] (grpc/invoke client desc)))))))
 
+(defn AuthzTest
+  ([client params] (AuthzTest client {} params))
+  ([client metadata params]
+   (let [input (async/chan 1)
+         output (async/chan 1)
+         desc {:service "protojure.test.grpc.TestService"
+               :method  "AuthzTest"
+               :input   {:f protojure.test.grpc/new-AuthzTestRequest :ch input}
+               :output  {:f com.google.protobuf/pb->Empty :ch output}
+               :metadata metadata}]
+     (-> (send-unary-params input params)
+         (p/then (fn [_] (invoke-unary client desc output)))))))
+
 (defn ShouldThrow
   ([client params] (ShouldThrow client {} params))
   ([client metadata params]
