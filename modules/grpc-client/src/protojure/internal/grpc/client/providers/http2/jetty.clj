@@ -135,7 +135,9 @@
       (onIdleTimeout [_ stream ex]
         (stream-log :error stream "Timeout")
         (>!! meta-ch {:error {:type :timeout :error ex}})
-        (end-stream! stream))
+        (end-stream! stream)
+        ;; true: Close the session
+        true)
       (onClosed [_ stream]
         (stream-log :trace stream "Closed"))
       (onPush [_ stream frame]
