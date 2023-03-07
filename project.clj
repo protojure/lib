@@ -9,6 +9,20 @@
             :key "apache-2.0"}
   :plugins [[lein-set-version "0.4.1"]
             [lein-sub "0.3.0"]]
+  :repositories {"snapshots" {:url "https://pkgs.dev.azure.com/patch-opz/Patch/_packaging/patch-mirror/maven/v1"
+                              :username "patch-opz"
+                              :password [:gpg :env/azure_access_token]}
+                 "releases" {:url "https://pkgs.dev.azure.com/patch-opz/Patch/_packaging/patch-mirror/maven/v1"
+                             :username "patch-opz"
+                             :password [:gpg :env/azure_access_token]}}
+
+  :deploy-repositories {"releases" {:url "https://pkgs.dev.azure.com/patch-opz/Patch/_packaging/patch-mirror/maven/v1"
+                                    :username "patch-opz"
+                                    :password [:gpg :env/azure_access_token]
+                                    :sign-releases false}
+                        "snapshots" {:url "https://pkgs.dev.azure.com/patch-opz/Patch/_packaging/patch-mirror/maven/v1"
+                                     :username "patch-opz"
+                                     :password [:gpg :env/azure_access_token]}}
   :managed-dependencies [[org.clojure/clojure "1.11.1"]
                          [org.clojure/core.async "1.5.648"]
                          [org.clojure/tools.logging "1.2.4"]

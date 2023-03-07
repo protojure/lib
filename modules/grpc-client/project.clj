@@ -5,6 +5,20 @@
             :url "https://www.apache.org/licenses/LICENSE-2.0"
             :year 2022
             :key "apache-2.0"}
+  :repositories {"snapshots" {:url "https://pkgs.dev.azure.com/patch-opz/Patch/_packaging/patch-mirror/maven/v1"
+                              :username "patch-opz"
+                              :password [:gpg :env/azure_access_token]}
+                 "releases" {:url "https://pkgs.dev.azure.com/patch-opz/Patch/_packaging/patch-mirror/maven/v1"
+                             :username "patch-opz"
+                             :password [:gpg :env/azure_access_token]}}
+
+  :deploy-repositories {"releases" {:url "https://pkgs.dev.azure.com/patch-opz/Patch/_packaging/patch-mirror/maven/v1"
+                                    :username "patch-opz"
+                                    :password [:gpg :env/azure_access_token]
+                                    :sign-releases false}
+                        "snapshots" {:url "https://pkgs.dev.azure.com/patch-opz/Patch/_packaging/patch-mirror/maven/v1"
+                                     :username "patch-opz"
+                                     :password [:gpg :env/azure_access_token]}}
   :plugins [[lein-cljfmt "0.9.0"]
             [lein-kibit "0.1.8"]
             [lein-bikeshed "0.5.2"]
