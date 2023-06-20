@@ -5,9 +5,9 @@
             :url "https://www.apache.org/licenses/LICENSE-2.0"
             :year 2022
             :key "apache-2.0"}
-  :plugins [[lein-cljfmt "0.9.0"]
+  :plugins [[lein-cljfmt "0.9.2"]
             [lein-set-version "0.4.1"]
-            [lein-cloverage "1.2.3"]
+            [lein-cloverage "1.2.4"]
             [lein-parent "0.3.9"]]
   :parent-project {:path "../project.clj"
                    :inherit [:managed-dependencies :javac-options]}
@@ -26,17 +26,17 @@
                                     [org.eclipse.jetty/jetty-alpn-java-client]
                                     [lambdaisland/uri]
                                     [org.clojure/tools.logging]
-                                    [org.clojure/tools.namespace "1.3.0"]
+                                    [org.clojure/tools.namespace "1.4.4"]
                                     [clj-http "3.12.3"]
-                                    [com.taoensso/timbre "5.2.1"]
+                                    [com.taoensso/timbre "6.0.4"]
                                     [com.fzakaria/slf4j-timbre "0.3.21"]
-                                    [org.slf4j/jul-to-slf4j "2.0.3"]
-                                    [org.slf4j/jcl-over-slf4j "2.0.3"]
-                                    [org.slf4j/log4j-over-slf4j "2.0.3"]
+                                    [org.slf4j/jul-to-slf4j "2.0.5"]
+                                    [org.slf4j/jcl-over-slf4j "2.0.5"]
+                                    [org.slf4j/log4j-over-slf4j "2.0.5"]
                                     [org.clojure/data.codec "0.1.1"]
                                     [org.clojure/data.generators "1.0.0"]
                                     [danlentz/clj-uuid "0.1.9"]
-                                    [eftest "0.5.9"]
+                                    [eftest "0.6.0"]
                                     [criterium "0.4.6"]
                                     [circleci/bond "0.6.0"]
                                     [crypto-random "1.2.1"]]
