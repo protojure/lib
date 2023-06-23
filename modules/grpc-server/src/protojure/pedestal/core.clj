@@ -394,14 +394,13 @@
   "Generates our undertow provider, which defines the callback point between
   the undertow container and pedestal by dealing with the dispatch interop.
   Our real work occurs in the (request) form above"
-  [service-map]
+  [{:keys [::thread-pool] :or {thread-pool (Executors/newCachedThreadPool)} :as service-map}]
   (let [interceptors (::http/interceptors service-map)
-        pool (Executors/newCachedThreadPool)
         connections (atom {})]
     (assoc service-map ::handler
            (reify HttpHandler
              (handleRequest [this exchange]
-               (handle-request pool interceptors connections exchange))))))
+               (handle-request thread-pool interceptors connections exchange))))))
 
 (defn config
   "Given a service map (with interceptor provider established) and a server-opts map,
