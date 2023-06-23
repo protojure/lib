@@ -35,10 +35,14 @@
 (defn get-code [type]
   (:code (get-desc type)))
 
-(defn- -error
+(defn exception-info
   [{:keys [type code msg]}]
+  (ex-info "grpc error" {:code (if (some? type) (get-code type) code) :msg msg :exception-type ::error}))
+
+(defn- -error
+  [{:keys [type] :as x}]
   (when-not (= type :ok)
-    (throw (ex-info "grpc error" {:code code :msg msg :exception-type ::error}))))
+    (throw (exception-info x))))
 
 (defn error
   ([type]

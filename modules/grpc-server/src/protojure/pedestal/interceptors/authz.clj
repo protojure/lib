@@ -4,26 +4,34 @@
 
 (ns protojure.pedestal.interceptors.authz
   "A [Pedestal](http://pedestal.io/) [interceptor](http://pedestal.io/reference/interceptors) for authorizing Protojure GRPC endpoints"
-  (:require [io.pedestal.interceptor :as pedestal]
-            [io.pedestal.interceptor.chain :refer [terminate]]
+  (:require [clojure.core.async :refer [go <!] :as async]
+            [io.pedestal.interceptor :as pedestal]
+            [io.pedestal.interceptor.chain :refer [terminate] :as chain]
             [protojure.pedestal.interceptors.grpc :as grpc]
             [protojure.grpc.status :as grpc.status]))
 
-(defn- http-permission-denied
+(defn- permission-denied
   "Terminates the context with a 401 status"
-  [context]
+  [grpc? context]
   (-> context
-      (assoc :response {:status 401})
+      (cond-> (not grpc?) (assoc :response {:status 401}))
+      (cond-> grpc? (assoc ::chain/error (grpc.status/exception-info (grpc.status/get-desc :permission-denied))))
       (terminate)))
+
+(defn- complete [allow? grpc? context]
+  (if-not allow?
+    (permission-denied grpc? context)
+    context))
 
 (defn- authz-enter
   [m pred {{:keys [path-info] :as request} :request :as context}]
-  (let [e (get m path-info)]
-    (if-not (pred (cond-> request (some? e) (assoc :grpc-requestinfo e)))
-      (if (some? e)
-        (grpc.status/error :permission-denied)
-        (http-permission-denied context))
-      context)))
+  (let [e (get m path-info)
+        grpc? (some? e)
+        allow (pred (cond-> request grpc? (assoc :grpc-requestinfo e)))]
+    (if (instance? clojure.core.async.impl.channels.ManyToManyChannel allow)
+      (go
+        (complete (<! allow) grpc? context))
+      (complete allow grpc? context))))
 
 (defn- nested?
   "Returns true if the metadata is nested in a vector"
@@ -54,7 +62,8 @@
   - 'pred': An arity-1 predicate function that accepts a pedestal request map as input.  Evaluating to true signals that the
             call is authorized, and should continue.  Evaluating to false stops further execution and triggers a permission
             denied response.  The request-map is augmented with :grpc-requestinfo containing the :pkg, :service, and :method of
-            the call.
+            the call.  Returning a core.async channel indicates that the predicate is asynchronous and will return true/false
+            on the channel.
 
   "
   [m pred]

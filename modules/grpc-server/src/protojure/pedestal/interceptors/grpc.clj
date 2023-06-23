@@ -117,7 +117,8 @@
       ;; special-case unary return types
       (not server-streaming)
       (do
-        (async/>!! output-ch (or body {}))
+        (when body
+          (async/>!! output-ch body))
         (async/close! output-ch))
 
       ;; Auto-close the output ch if the user does not signify they have consumed it
