@@ -10,5 +10,5 @@
 ;; to run one test: `(run-tests (find-tests #'protojure.pedestal-test/edn-check))`
 ;; to see output, use (run-tests ... {:capture-output? false})
 
-;; to run all tests until first failure:
-;; `(run-tests (find-tests "test") {:fail-fast? true :multithread? false})
+(defn run-all-tests []
+  (run-tests (find-tests "test") {:fail-fast? true :multithread? false}))

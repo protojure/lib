@@ -8,7 +8,8 @@
             [clojure.core.async :as async :refer [go >! <!! >!!]]
             [io.pedestal.http :as http]
             [io.pedestal.http.body-params :as body-params]
-            [protojure.pedestal.core :as protojure.pedestal]
+            [promesa.exec :as p.exec]
+            [protojure.pedestal.core :as core]
             [protojure.pedestal.interceptors.authz :as authz]
             [protojure.test.utils :as test.utils]
             [protojure.internal.io :as pio]
@@ -129,12 +130,14 @@
                       io.pedestal.http/json-body
                       (authz/interceptor nil sync-authorize?)
                       (authz/interceptor nil async-authorize?)]
-        desc {:env                  :prod
-              ::http/routes         (into #{} (routes interceptors))
-              ::http/port           port
+        thread-pool   (p.exec/fixed-executor {:parallelism 64})
+        desc {:env                     :prod
+              ::http/routes            (into #{} (routes interceptors))
+              ::http/port              port
 
-              ::http/type           protojure.pedestal/config
-              ::http/chain-provider protojure.pedestal/provider
+              ::http/type              core/config
+              ::http/chain-provider    core/provider
+              ::core/thread-pool       thread-pool
 
               ::http/container-options {:ssl-port ssl-port
                                         ; keystore may be either string denoting file path (relative or
@@ -144,10 +147,13 @@
 
     (let [server (http/create-server desc)]
       (http/start server)
-      (swap! test-svc assoc :port port :ssl-port ssl-port :server server))))
+      (swap! test-svc assoc :port port :ssl-port ssl-port :server server :thread-pool thread-pool))))
 
 (defn destroy-service []
-  (swap! test-svc update :server http/stop))
+  (swap! test-svc (fn [x]
+                    (-> x
+                        (update :server http/stop)
+                        (update :thread-pool #(.shutdown %))))))
 
 (defn wrap-service [test-fn]
   (create-service)
