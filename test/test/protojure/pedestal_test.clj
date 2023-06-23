@@ -80,11 +80,17 @@
    ["/json" :post (conj interceptors `json-content)]
    ["/denied" :get (conj interceptors `get-denied)]])
 
-(defn- authorize?
+(defn- sync-authorize?
   [{:keys [path-info] :as request}]
   ;; This authz predicate will always deny calls to the /denied endpoint.  A real implementation would probably
   ;; look at other criteria, such as the callers credentials
   (not= path-info "/denied"))
+
+(defn- async-authorize?
+  [{:keys [path-info] :as request}]
+  ;; Identical to sync-authorize, except runs asynchronously
+  (go
+    (not= path-info "/denied")))
 
 ;;-----------------------------------------------------------------------------
 ;; Utilities
@@ -121,7 +127,8 @@
         interceptors [(body-params/body-params)
                       http/html-body
                       io.pedestal.http/json-body
-                      (authz/interceptor nil authorize?)]
+                      (authz/interceptor nil sync-authorize?)
+                      (authz/interceptor nil async-authorize?)]
         desc {:env                  :prod
               ::http/routes         (into #{} (routes interceptors))
               ::http/port           port
