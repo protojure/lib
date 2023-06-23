@@ -382,13 +382,14 @@
 
   ;; Start asynchronous output
   (let [output-ch (open-output-channel exchange)]
-    @(-> (p/all [input-status
-                 (transmit-trailers exchange trailers)
-                 (transmit-body output-ch body)])
-         (p/finally (fn [_ _]
-                      (close-output-channel exchange output-ch)
-                      (unsubscribe-close connections exchange)
-                      (.endExchange exchange))))))
+    (try
+      @(p/all [input-status
+               (transmit-trailers exchange trailers)
+               (transmit-body output-ch body)])
+      (finally
+        (close-output-channel exchange output-ch)
+        (unsubscribe-close connections exchange)
+        (.endExchange exchange)))))
 
 (defn provider
   "Generates our undertow provider, which defines the callback point between
