@@ -212,7 +212,7 @@
 
   (AsyncEmpty
     [_ {:keys [grpc-out]}]
-    (async/close! grpc-out)
+    (async/onto-chan! grpc-out [{}])
     {:body grpc-out})
 
   (ReturnError
@@ -752,8 +752,10 @@
 
 (deftest test-grpc-empty
   (testing "Check that empty parameters are passed correctly"
-    (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
-      @(test.client/AllEmpty client {})
+    (let [client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})
+          result @(test.client/AllEmpty client {})]
+      (is (record? result))
+      (is (= (into {} result) {}))
       (grpc/disconnect client))))
 
 (deftest test-grpc-async-empty
@@ -761,6 +763,11 @@
     (let [output (async/chan 1)
           client @(grpc.http2/connect {:uri (str "http://localhost:" (:port @test-env))})]
       @(test.client/AsyncEmpty client {} output)
+      (let [result (-> (async/into [] output)
+                       (async/<!!))]
+        (is (= (count result) 1))
+        (is (record? (first result)))
+        (is (= (into {} (first result)) {})))
       (grpc/disconnect client))))
 
 (deftest test-client-transmit-dataframe-exception
