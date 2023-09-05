@@ -185,12 +185,14 @@
 
 (def ^:const default-input-buffer (* 1024 1024))
 
-(defn connect [{:keys [host port input-buffer-size idle-timeout ssl] :or {host "localhost" input-buffer-size default-input-buffer port 80 ssl false} :as params}]
+(defn connect [{:keys [host port input-buffer-size idle-timeout ssl insecure?] :or {host "localhost" input-buffer-size default-input-buffer port 80 ssl false insecure? false} :as params}]
   (let [client (HTTP2Client.)
         address (InetSocketAddress. ^String host (int port))
         listener (ServerSessionListener$Adapter.)
         ssl-context-factory (when ssl (SslContextFactory$Client.))]
-    (when ssl (.addBean client ssl-context-factory))
+    (when ssl
+      (.addBean client ssl-context-factory)
+      (.setTrustAll ssl-context-factory insecure?))
     (log/debug "Connecting with parameters: " params)
     (.setInputBufferSize client input-buffer-size)
     (.setInitialStreamRecvWindow client input-buffer-size)
