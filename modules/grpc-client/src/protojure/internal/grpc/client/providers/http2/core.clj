@@ -22,9 +22,9 @@
   [{:keys [f] :as input} codecs content-coding max-frame-size]
   (when (some? input)
     (let [input-ch (:ch input)
-          output-ch (async/chan 16)]
-      (lpm/encode f input-ch output-ch {:codecs codecs :content-coding content-coding :max-frame-size max-frame-size})
-      output-ch)))
+          output-ch (async/chan 16)
+          encode-promise (lpm/encode f input-ch output-ch {:codecs codecs :content-coding content-coding :max-frame-size max-frame-size})]
+      [output-ch encode-promise])))
 
 (defn- codecs-to-accept [codecs]
   (clojure.string/join "," (cons "identity" (keys codecs))))
@@ -151,8 +151,8 @@
 (deftype Http2Provider [context uri codecs content-coding max-frame-size input-buffer-size metadata]
   api/Provider
 
-  (invoke [_ {:keys [input output] :as params}]
-    (let [input-ch (input-pipeline input codecs content-coding max-frame-size)
+  (invoke [_ {:keys [input output unary?] :as params}]
+    (let [[input-ch encode-promise] (input-pipeline input codecs content-coding max-frame-size)
           meta-ch (async/chan 32)
           output-ch (when (some? output) (async/chan (max 32
                                                           (/ input-buffer-size max-frame-size))))]
@@ -164,7 +164,10 @@
                                            (safe-close! output-ch)
                                            (async/close! meta-ch)
                                            (safe-close! input-ch)
-                                           (throw ex))))])))
+                                           (throw ex))))
+                            ;;FIXME Exception handling and propagation from the encode and decode pipelines can be further improved
+                            ;; For streaming use cases, we do not want to fail for one bad input, for unary we do
+                            (if unary? encode-promise nil)])))
           (p/then (fn [[_ status]]
                     (log/trace "GRPC completed:" status)
                     status)

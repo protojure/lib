@@ -1,4 +1,4 @@
-(defproject io.github.protojure/test "2.0.2-SNAPSHOT"
+(defproject io.github.protojure/test "2.0.7-SNAPSHOT"
   :description "Test harness for protojure libs"
   :url "http://github.com/protojure/lib"
   :license {:name "Apache License 2.0"
