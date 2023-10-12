@@ -31,12 +31,15 @@ A map with the following entries:
 | **input-buffer-size** | _UInt32_      | 1MB     | The input-buffer size                                                     |
 | **insecure?**         | _bool_        | false   | Disables TLS checks such as host verification and truststore (dev only)   |
 | **metadata**          | _map_ or _fn_ | n/a     | Optional [string string] tuples as a map, or a 0-arity fn that returns same that will be submitted as attributes to the request, such as via HTTP headers for GRPC-HTTP2 |
+| **on-close**          | _fn_          | n/a     | Optional zero argument callback function when a connection is closed. |
 
 #### Return value
 A promise that, on success, evaluates to an instance of [[api/Provider]].
 _(api/disconnect)_ should be used to release any resources when the connection is no longer required.
   "
-  [{:keys [uri codecs content-coding max-frame-size input-buffer-size metadata idle-timeout ssl insecure?] :or {codecs builtin-codecs max-frame-size 16384 input-buffer-size jetty/default-input-buffer insecure? false} :as params}]
+  [{:keys [uri codecs content-coding max-frame-size input-buffer-size metadata idle-timeout ssl insecure? on-close]
+    :or {codecs builtin-codecs max-frame-size 16384 input-buffer-size jetty/default-input-buffer insecure? false}
+    :as params}]
   (log/debug "Connecting with GRPC-HTTP2:" params)
   (let [{:keys [host port scheme]} (lambdaisland/uri uri)
         https? (= "https" (lower-case scheme))
@@ -44,5 +47,5 @@ _(api/disconnect)_ should be used to release any resources when the connection i
                       port (Integer/parseInt port)
                       https? 443
                       :else 80)]
-    (-> (jetty/connect {:host host :port parsed-port :input-buffer-size input-buffer-size :idle-timeout idle-timeout :ssl (or ssl https?) :insecure? insecure?})
+    (-> (jetty/connect {:host host :port parsed-port :input-buffer-size input-buffer-size :idle-timeout idle-timeout :ssl (or ssl https?) :insecure? insecure? :on-close on-close})
         (p/then #(core/->Http2Provider % uri codecs content-coding max-frame-size input-buffer-size metadata)))))
