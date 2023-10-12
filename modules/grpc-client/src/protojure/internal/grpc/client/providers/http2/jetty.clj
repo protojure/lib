@@ -10,11 +10,13 @@
             [clojure.tools.logging :as log])
   (:import (java.net InetSocketAddress)
            (java.nio ByteBuffer)
+           (java.util.concurrent.atomic AtomicBoolean)
            (org.eclipse.jetty.http2.client HTTP2Client)
            (org.eclipse.jetty.http2.api Stream$Listener
                                         Stream
-                                        Session)
-           (org.eclipse.jetty.http2.api.server ServerSessionListener$Adapter)
+                                        Session
+                                        Session$Listener
+                                        Session$Listener$Adapter)
            (org.eclipse.jetty.http2.frames HeadersFrame
                                            DataFrame)
            (org.eclipse.jetty.util Promise Callback)
@@ -179,16 +181,38 @@
                (reject r)))))))
     (p/resolved true)))
 
+(defn- session-listener
+  "Create a listener for Session events"
+  [on-close]
+  (if (some? on-close)
+    (let [go-away-once (AtomicBoolean. false)]
+      (proxy [Session$Listener$Adapter] []
+        ;; We must re-implement a bit of logic from the base class here to invoke callback.
+        ;; See https://github.com/jetty/jetty.project/blob/5bc5e562c8d05c5862505aebe5cf83a61bdbcb96/jetty-http2/http2-common/src/main/java/org/eclipse/jetty/http2/api/Session.java#L256
+        (onClose [_session _frame ^Callback callback]
+          (try
+            (when (.compareAndSet go-away-once false true)
+              ;; An HTTP/2 session may send multiple GOAWAY frames on disconnect.
+              ;; Trigger on-close once, upon the first frame.
+              ;; https://datatracker.ietf.org/doc/html/rfc7540#section-6.8
+              (on-close))
+            (.succeeded callback)
+            (catch Throwable e
+              (.failed callback e))))))
+    (Session$Listener$Adapter.)))
+
 ;;------------------------------------------------------------------------------------
 ;; Exposed API
 ;;------------------------------------------------------------------------------------
 
 (def ^:const default-input-buffer (* 1024 1024))
 
-(defn connect [{:keys [host port input-buffer-size idle-timeout ssl insecure?] :or {host "localhost" input-buffer-size default-input-buffer port 80 ssl false insecure? false} :as params}]
+(defn connect [{:keys [host port input-buffer-size idle-timeout ssl insecure? on-close]
+                :or {host "localhost" input-buffer-size default-input-buffer port 80 ssl false insecure? false}
+                :as params}]
   (let [client (HTTP2Client.)
         address (InetSocketAddress. ^String host (int port))
-        listener (ServerSessionListener$Adapter.)
+        listener (session-listener on-close)
         ssl-context-factory (when ssl (SslContextFactory$Client.))]
     (when ssl
       (.addBean client ssl-context-factory)
