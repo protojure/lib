@@ -20,7 +20,7 @@
     "application/grpc-web-text+proto"})
 
 (defn- web-text?
-  [{{:strs [content-type]} :headers}]
+  [{:keys [content-type]}]
   (contains? content-types content-type))
 
 (defn- pred->

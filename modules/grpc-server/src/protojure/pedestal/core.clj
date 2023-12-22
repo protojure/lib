@@ -10,11 +10,11 @@
             [io.pedestal.interceptor.helpers :as pedestal.interceptors]
             [io.pedestal.log :as log]
             [clojure.string :as string]
-            [clojure.pprint :refer [pprint]]
-            [clojure.core.async :refer [go-loop <!! <! go chan >!! >! close! timeout poll! promise-chan]]
+            [clojure.core.async :refer [<!! <! go chan >!! close! poll! promise-chan]]
             [promesa.core :as p]
             [clojure.java.io :as io]
             [protojure.pedestal.ssl :as ssl]
+            [protojure.pedestal.utils :as u]
             [protojure.internal.io :as pio])
   (:import (io.undertow.server HttpHandler
                                HttpServerExchange
@@ -40,7 +40,7 @@
 (defn- assoc-header
   "Associates an undertow header entry as a <string, string> tuple in a map"
   [^HeaderMap headers map ^HttpString key]
-  (assoc map (string/lower-case key) (.get headers key 0)))
+  (assoc map (str key) (.get headers key 0)))
 
 (defn- get-request-headers
   "Create a map of request header elements"
@@ -310,10 +310,13 @@
      (let [response-handler (pedestal.interceptors/on-response ::container resolve)]
        (pedestal.chain/execute {:request request} (cons response-handler interceptors))))))
 
+(def ^{:no-doc true :const true} content-type-re #"(?i)content-type")
+
 (defn- make-request-map [input-ch connections ^HttpServerExchange exchange]
   (let [input-stream (pio/new-inputstream {:ch input-ch})
         headers      (get-request-headers exchange)
-        ssl-cert     (get-ssl-client-cert exchange)]
+        ssl-cert     (get-ssl-client-cert exchange)
+        content-type (u/get-header headers content-type-re)]
     (cond-> {:query-string     (.getQueryString exchange)
              :request-method   (keyword (string/lower-case (.toString (.getRequestMethod exchange))))
              :headers          headers
@@ -332,8 +335,8 @@
              :server-port      (.getHostPort exchange)
              :scheme           (keyword (.getRequestScheme exchange))
              :async-supported? true}
-      (contains? headers "content-type")
-      (assoc :content-type (get headers "content-type"))
+      (some? content-type)
+      (assoc :content-type content-type)
 
       (not (neg? (.getRequestContentLength exchange)))
       (assoc :content-length (.getRequestContentLength exchange))
