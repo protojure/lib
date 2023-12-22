@@ -12,10 +12,18 @@
             [io.pedestal.interceptor :as pedestal]
             [io.pedestal.interceptor.error :as err]
             [io.pedestal.log :as log]
-            [protojure.grpc.status :as grpc.status])
+            [protojure.grpc.status :as grpc.status]
+            [protojure.pedestal.utils :as u])
   (:import [java.util UUID]))
 
 (set! *warn-on-reflection* true)
+
+(def ^{:no-doc true :const true} grpc-encoding #"(?i)grpc-encoding")
+(def ^{:no-doc true :const true} grpc-accept-encoding #"(?i)grpc-accept-encoding")
+
+(defn- get-input-encoding [headers]
+  (or (u/get-header headers grpc-encoding)
+      "identity"))
 
 (def ^{:const true :no-doc true} supported-encodings (-> protojure.grpc.codec.compression/builtin-codecs (keys) (conj "identity") (set)))
 
@@ -25,23 +33,29 @@
        (filter supported-encodings)
        (first)))
 
+(defn- get-output-encoding [headers]
+  (or (some-> (u/get-header headers grpc-accept-encoding)
+              (determine-output-encoding))
+      "identity"))
+
 (defn logging-chan [bufsiz id label]
   (async/chan bufsiz (map (fn [m] (log/trace (str "GRPC: " id " -> " label) m) m))))
 
 (defn- create-req-ctx
-  [id f {:keys [body-ch] {:strs [grpc-encoding] :or {grpc-encoding "identity"}} :headers :as req}]
+  [id f {:keys [body-ch headers] :as req}]
   (let [in body-ch
-        out (logging-chan 128 id "rx")]
+        out (logging-chan 128 id "rx")
+        encoding (get-input-encoding headers)]
     {:in       in
      :out      out
-     :encoding grpc-encoding
-     :status   (lpm/decode f in out {:content-coding grpc-encoding})}))
+     :encoding encoding
+     :status   (lpm/decode f in out {:content-coding encoding})}))
 
 (defn- create-resp-ctx
-  [id f {{:strs [grpc-accept-encoding] :or {grpc-accept-encoding ""}} :headers :as req}]
+  [id f {:keys [headers] :as req}]
   (let [in (logging-chan 128 id "tx")
         out (async/chan 128)
-        encoding (or (determine-output-encoding grpc-accept-encoding) "identity")]
+        encoding (get-output-encoding headers)]
     {:in       in
      :out      out
      :encoding encoding
