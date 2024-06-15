@@ -13,6 +13,7 @@
             [clojure.pprint :refer [pprint]]
             [clojure.core.async :refer [go-loop <!! <! go chan >!! >! close! timeout poll! promise-chan]]
             [promesa.core :as p]
+            [promesa.exec :as p.exec]
             [clojure.java.io :as io]
             [protojure.pedestal.ssl :as ssl]
             [protojure.internal.io :as pio])
@@ -348,17 +349,17 @@
   "Our main handler - Every request arriving at the undertow endpoint
   filters through this function.  We decode it and then invoke our pedestal
   chain asynchronously"
-  [^ThreadPoolExecutor pool interceptors connections ^HttpServerExchange exchange]
+  [pool interceptors connections ^HttpServerExchange exchange]
   (let [input-ch         (chan 16384) ;; TODO this allocation likely needs adaptive tuning
         input-status     (open-input-channel exchange input-ch)
         request          (make-request-map input-ch connections exchange)]
-    (.execute pool
-              (fn []
-                (try
-                  (let [response @(chain-execute request interceptors)]
-                    (handle-response connections exchange input-status response))
-                  (catch Exception ex
-                    (log/error :msg "unhandled" :exception ex)))))))
+    (p.exec/run! pool
+                 (fn []
+                   (try
+                     (let [response @(chain-execute request interceptors)]
+                       (handle-response connections exchange input-status response))
+                     (catch Exception ex
+                       (log/error :msg "unhandled" :exception ex)))))))
 
 (defn- handle-response
   "This function is invoked when the interceptor chain has fully executed and it is now time to
@@ -395,7 +396,7 @@
   "Generates our undertow provider, which defines the callback point between
   the undertow container and pedestal by dealing with the dispatch interop.
   Our real work occurs in the (request) form above"
-  [{:keys [::thread-pool] :or {thread-pool (Executors/newCachedThreadPool)} :as service-map}]
+  [{:keys [::thread-pool] :or {thread-pool (if p.exec/vthreads-supported? p.exec/vthread-executor p.exec/thread-executor)} :as service-map}]
   (let [interceptors (::http/interceptors service-map)
         connections (atom {})]
     (assoc service-map ::handler
