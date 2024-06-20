@@ -54,5 +54,5 @@ resolves to a decoded result when successful.  Used in remote procedure calls wi
 | **ch**      | _core.async/channel_ | A core.async channel expected to carry the response data                   |
   "
   [client params ch]
-  (-> (grpc/invoke client params)
+  (-> (grpc/invoke client (assoc params :unary? true))
       (p/then (fn [_] (take ch)))))
