@@ -34,7 +34,12 @@
   (testing "Verify that our input stream's timeout mechanism works"
     (let [input (async/chan 64)
           stream (pio/new-inputstream {:ch input :tmo 100})]
-      (is (thrown? clojure.lang.ExceptionInfo (.read stream))))))
+      (is (thrown? clojure.lang.ExceptionInfo (.read stream)))))
+  (testing "Verify that our input stream's timeout mechanism works"
+    (let [input (async/chan 64)
+          stream (pio/new-inputstream {:ch input :tmo 10000})]
+      (async/close! input)
+      (is (= (.read stream) -1)))))
 
 (deftest check-array-read
   (testing "Verify that we can read an array in one call"

@@ -4,13 +4,12 @@
 ;; SPDX-License-Identifier: Apache-2.0
 
 (ns protojure.internal.grpc.client.providers.http2.core
-  (:require [clojure.core.async :refer [>!! <!! <! >! go go-loop onto-chan] :as async]
+  (:require [clojure.core.async :refer [<! go-loop] :as async]
             [clojure.tools.logging :as log]
             [protojure.grpc.client.api :as api]
             [protojure.grpc.codec.lpm :as lpm]
             [protojure.internal.grpc.client.providers.http2.jetty :as jetty]
-            [promesa.core :as p]
-            [promesa.exec :as exec])
+            [promesa.core :as p])
   (:import (org.eclipse.jetty.http2.api Stream)
            (java.util.concurrent Executors))
   (:refer-clojure :exclude [resolve]))

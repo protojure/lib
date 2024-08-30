@@ -10,8 +10,7 @@
             [io.pedestal.interceptor.helpers :as pedestal.interceptors]
             [io.pedestal.log :as log]
             [clojure.string :as string]
-            [clojure.pprint :refer [pprint]]
-            [clojure.core.async :refer [go-loop <!! <! go chan >!! >! close! timeout poll! promise-chan]]
+            [clojure.core.async :refer [<!! <! go chan >!! close! poll! promise-chan]]
             [promesa.core :as p]
             [promesa.exec :as p.exec]
             [clojure.java.io :as io]
@@ -31,7 +30,6 @@
            (io.undertow.io Receiver$PartialBytesCallback Receiver$ErrorCallback)
            (java.nio ByteBuffer)
            (org.xnio.channels StreamSinkChannel)
-           (java.util.concurrent Executors ThreadPoolExecutor)
            (clojure.lang IPersistentCollection IFn)
            (java.time LocalTime))
   (:refer-clojure :exclude [resolve flush]))
