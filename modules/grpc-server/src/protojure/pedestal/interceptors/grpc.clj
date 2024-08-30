@@ -5,7 +5,7 @@
 
 (ns protojure.pedestal.interceptors.grpc
   "A [Pedestal](http://pedestal.io/) [interceptor](http://pedestal.io/reference/interceptors) for [GRPC](https://grpc.io/) support"
-  (:require [clojure.core.async :refer [go >! <!] :as async]
+  (:require [clojure.core.async :refer [go <!] :as async]
             [protojure.grpc.codec.lpm :as lpm]
             [protojure.grpc.status :as status]
             [promesa.core :as p]

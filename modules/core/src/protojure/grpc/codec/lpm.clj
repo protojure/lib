@@ -5,8 +5,9 @@
 
 (ns protojure.grpc.codec.lpm
   "Utility functions for GRPC [length-prefixed-message](https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md#requests) encoding."
-  (:require [clojure.core.async :refer [<! >! go go-loop] :as async]
+  (:require [clojure.core.async :refer [<!! >!!] :as async]
             [promesa.core :as p]
+            [promesa.exec :as p.exec]
             [protojure.protobuf :refer [->pb]]
             [protojure.grpc.codec.compression :as compression]
             [protojure.internal.io :as pio]
@@ -17,6 +18,8 @@
   (:refer-clojure :exclude [resolve]))
 
 (set! *warn-on-reflection* true)
+
+(def lpm-thread-executor (if p.exec/vthreads-supported? p.exec/vthread-executor p.exec/thread-executor))
 
 ;;--------------------------------------------------------------------------------------
 ;; integer serdes used for GRPC framing
@@ -148,22 +151,22 @@ The value for the **content-coding** option must be one of
                        (compression/decompressor codecs content-coding))]
     (p/create
      (fn [resolve reject]
-       (go
-         (try
-           (loop []
-             (if-let [buf (<! input)]
-               (let [is (pio/new-inputstream {:ch input :tmo tmo :buf buf})]
-                 (doseq [msg (decode->seq f is decompressor)]
-                   (when (some? msg)
-                     (log/trace "Decoded: " msg)
-                     (>! output msg)))
-                 (recur))
-               (resolve :ok)))
-           (catch Exception e
-             (reject e))
-           (finally
-             (log/trace "closing output channel")
-             (async/close! output))))))))
+       (try
+         (loop []
+           (if-let [buf (<!! input)]
+             (let [is (pio/new-inputstream {:ch input :tmo tmo :buf buf})]
+               (doseq [msg (decode->seq f is decompressor)]
+                 (when (some? msg)
+                   (log/trace "Decoded: " msg)
+                   (>!! output msg)))
+               (recur))
+             (resolve :ok)))
+         (catch Exception e
+           (reject e))
+         (finally
+           (log/trace "closing output channel")
+           (async/close! output))))
+     lpm-thread-executor)))
 
 ;;--------------------------------------------------------------------------------------
 ;; Encoder
@@ -242,20 +245,20 @@ The _max-frame-size_ option dictates how bytes are encoded on the _output_ chann
                      (compression/compressor codecs content-coding))]
     (p/create
      (fn [resolve reject]
-       (go
-         (try
-           (loop []
-             (if-let [_msg (<! input)]
-               (do
-                 (log/trace "Encoding: " _msg)
-                 (let [msg (f _msg)]
-                   (if (some? compressor)
-                     (encode-maybe-compressed msg compressor os)
-                     (encode-uncompressed msg os))
-                   (.flush os)
-                   (recur)))
-               (resolve :ok)))
-           (catch Exception e
-             (reject e))
-           (finally
-             (.close os))))))))
+       (try
+         (loop []
+           (if-let [_msg (<!! input)]
+             (do
+               (log/trace "Encoding: " _msg)
+               (let [msg (f _msg)]
+                 (if (some? compressor)
+                   (encode-maybe-compressed msg compressor os)
+                   (encode-uncompressed msg os))
+                 (.flush os)
+                 (recur)))
+             (resolve :ok)))
+         (catch Exception e
+           (reject e))
+         (finally
+           (.close os))))
+     lpm-thread-executor)))
