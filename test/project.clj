@@ -23,6 +23,7 @@
                                     [io.undertow/undertow-servlet]
                                     [io.pedestal/pedestal.log]
                                     [io.pedestal/pedestal.service]
+                                    [io.pedestal/pedestal.error]
                                     [org.eclipse.jetty.http2/http2-client]
                                     [org.eclipse.jetty/jetty-alpn-java-client]
                                     [lambdaisland/uri]

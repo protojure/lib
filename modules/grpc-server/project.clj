@@ -19,4 +19,5 @@
                  [io.undertow/undertow-core]
                  [io.undertow/undertow-servlet]
                  [io.pedestal/pedestal.log]
-                 [io.pedestal/pedestal.service]])
+                 [io.pedestal/pedestal.service]
+                 [io.pedestal/pedestal.error]])
