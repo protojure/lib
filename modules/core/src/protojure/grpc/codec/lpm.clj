@@ -7,10 +7,10 @@
   "Utility functions for GRPC [length-prefixed-message](https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md#requests) encoding."
   (:require [clojure.core.async :refer [<!! >!!] :as async]
             [promesa.core :as p]
-            [promesa.exec :as p.exec]
             [protojure.protobuf :refer [->pb]]
             [protojure.grpc.codec.compression :as compression]
             [protojure.internal.io :as pio]
+            [protojure.threads :as threads]
             [clojure.tools.logging :as log]
             [clojure.java.io :as io])
   (:import (java.io InputStream OutputStream ByteArrayOutputStream)
@@ -19,7 +19,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def lpm-thread-executor (if p.exec/vthreads-supported? p.exec/vthread-executor p.exec/thread-executor))
+(def lpm-thread-executor (threads/get-executor))
 
 ;;--------------------------------------------------------------------------------------
 ;; integer serdes used for GRPC framing
