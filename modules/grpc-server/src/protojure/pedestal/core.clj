@@ -15,7 +15,8 @@
             [promesa.exec :as p.exec]
             [clojure.java.io :as io]
             [protojure.pedestal.ssl :as ssl]
-            [protojure.internal.io :as pio])
+            [protojure.internal.io :as pio]
+            [protojure.threads :as threads])
   (:import (io.undertow.server HttpHandler
                                HttpServerExchange
                                ServerConnection
@@ -394,7 +395,7 @@
   "Generates our undertow provider, which defines the callback point between
   the undertow container and pedestal by dealing with the dispatch interop.
   Our real work occurs in the (request) form above"
-  [{:keys [::thread-pool] :or {thread-pool (if p.exec/vthreads-supported? p.exec/vthread-executor p.exec/thread-executor)} :as service-map}]
+  [{:keys [::thread-pool] :or {thread-pool (threads/get-executor)} :as service-map}]
   (let [interceptors (::http/interceptors service-map)
         connections (atom {})]
     (assoc service-map ::handler
