@@ -1,4 +1,4 @@
-(defproject io.github.protojure/core "2.12.1-SNAPSHOT"
+(defproject io.github.protojure/core "0.0.0-SNAPSHOT"
   :description "Core protobuf and GRPC utilities for protojure"
   :url "http://github.com/protojure/lib"
   :license {:name "Apache License 2.0"
@@ -11,7 +11,7 @@
             [lein-set-version "0.4.1"]
             [lein-parent "0.3.9"]]
   :parent-project {:path "../../project.clj"
-                   :inherit [:managed-dependencies :javac-options]}
+                   :inherit [:managed-dependencies :javac-options :deploy-repositories]}
   :dependencies [[org.clojure/clojure]
                  [org.clojure/core.async]
                  [org.clojure/tools.logging]

@@ -1,0 +1,30 @@
+# Copyright © 2026 Manetu, Inc.  All rights reserved
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: CI
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: DeLaGuardo/setup-clojure@13.4
+        with:
+          lein: latest
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2
+            ~/.lein
+          key: build-${{ hashFiles('modules/jetty-shaded/pom.xml', 'project.clj') }}
+          restore-keys: build-
+      - run: make all

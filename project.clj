@@ -1,4 +1,4 @@
-(def protojure-version "2.12.1-SNAPSHOT")
+(def protojure-version "0.0.0-SNAPSHOT")
 
 (defproject io.github.protojure/lib-suite "0.0.1"
   :description "Support libraries for protoc-gen-clojure, providing native Clojure support for Google Protocol Buffers and GRPC applications"
@@ -30,4 +30,8 @@
                          [io.github.protojure/grpc-server ~protojure-version]
                          [protojure/google.protobuf "1.0.0"]]
   :javac-options ["-target" "11" "-source" "11"]
+  :deploy-repositories [["clojars" {:url "https://clojars.org/repo"
+                                    :username :env/clojars_username
+                                    :password :env/clojars_password
+                                    :sign-releases false}]]
   :sub ["modules/io" "modules/core" "modules/grpc-client" "modules/grpc-server"])

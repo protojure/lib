@@ -1,4 +1,4 @@
-# protojure [![CircleCI](https://circleci.com/gh/protojure/lib.svg?style=svg)](https://circleci.com/gh/protojure/lib)
+# protojure [![CI](https://github.com/protojure/lib/actions/workflows/ci.yml/badge.svg)](https://github.com/protojure/lib/actions/workflows/ci.yml)
 
 [![Clojars Project](https://img.shields.io/clojars/v/io.github.protojure/io.svg)](https://clojars.org/io.github.protojure/io)
 [![Clojars Project](https://img.shields.io/clojars/v/io.github.protojure/core.svg)](https://clojars.org/io.github.protojure/core)

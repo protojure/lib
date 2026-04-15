@@ -32,9 +32,15 @@ install: jetty-shaded
 	$(LEIN) sub install
 
 set-version:
-	sed -i '' 's/def protojure-version \".*\"/def protojure-version \"$(VERSION)\"/' project.clj
+	sed -i.bak 's/def protojure-version ".*"/def protojure-version "$(VERSION)"/' project.clj && rm project.clj.bak
 	cd modules/jetty-shaded && mvn -q versions:set -DnewVersion=$(VERSION) -DgenerateBackupPoms=false
 	$(LEIN) sub set-version $(VERSION)
+
+deploy: jetty-shaded-deploy
+	$(LEIN) sub deploy clojars
+
+jetty-shaded-deploy:
+	cd modules/jetty-shaded && mvn -q -DskipTests deploy
 
 clean:
 	$(LEIN) sub clean
