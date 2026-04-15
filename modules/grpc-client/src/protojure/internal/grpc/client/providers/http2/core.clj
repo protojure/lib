@@ -10,7 +10,7 @@
             [protojure.grpc.codec.lpm :as lpm]
             [protojure.internal.grpc.client.providers.http2.jetty :as jetty]
             [promesa.core :as p])
-  (:import (org.eclipse.jetty.http2.api Stream)
+  (:import (io.github.protojure.shaded.jetty.http2.api Stream)
            (java.util.concurrent Executors))
   (:refer-clojure :exclude [resolve]))
 

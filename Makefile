@@ -9,7 +9,10 @@ DEPS = Makefile project.clj
 
 all: scan test install
 
-scan:
+jetty-shaded:
+	cd modules/jetty-shaded && mvn -q install
+
+scan: jetty-shaded
 	$(LEIN) sub cljfmt check
 	cd test && $(LEIN) cljfmt check
 
@@ -22,20 +25,22 @@ deep-scan: scan
 	-$(LEIN) sub kibit
 
 .PHONY: test
-test:
+test: jetty-shaded
 	cd test && $(LEIN) cloverage
 
-install:
+install: jetty-shaded
 	$(LEIN) sub install
 
 set-version:
 	sed -i '' 's/def protojure-version \".*\"/def protojure-version \"$(VERSION)\"/' project.clj
+	cd modules/jetty-shaded && mvn -q versions:set -DnewVersion=$(VERSION) -DgenerateBackupPoms=false
 	$(LEIN) sub set-version $(VERSION)
 
 clean:
 	$(LEIN) sub clean
 	cd test && $(LEIN) clean
 	$(LEIN) clean
+	cd modules/jetty-shaded && mvn -q clean
 
 .PHONY: protos
 protos:
