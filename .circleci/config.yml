@@ -2,15 +2,40 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-version: 2 # use CircleCI 2.0
+version: 2.1
 jobs:
   build:
     working_directory: ~/lib
     docker:
-      - image: circleci/clojure:openjdk-14-lein-buster
+      - image: cimg/clojure:1.11
     environment:
       LEIN_ROOT: nbd
       JVM_OPTS: -Xmx3200m
     steps:
       - checkout
+      - run:
+          name: Install Maven
+          command: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends maven
+      - restore_cache:
+          keys:
+            - m2-v1-{{ checksum "modules/jetty-shaded/pom.xml" }}
+            - m2-v1-
+      - restore_cache:
+          keys:
+            - lein-v1-{{ checksum "project.clj" }}
+            - lein-v1-
       - run: make all
+      - save_cache:
+          key: m2-v1-{{ checksum "modules/jetty-shaded/pom.xml" }}
+          paths:
+            - ~/.m2
+      - save_cache:
+          key: lein-v1-{{ checksum "project.clj" }}
+          paths:
+            - ~/.lein
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - build
