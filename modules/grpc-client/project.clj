@@ -15,6 +15,5 @@
   :dependencies [[org.clojure/clojure]
                  [org.clojure/core.async]
                  [io.github.protojure/core]
-                 [org.eclipse.jetty.http2/http2-client]
-                 [org.eclipse.jetty/jetty-alpn-java-client]
+                 [io.github.protojure/jetty-shaded]
                  [lambdaisland/uri]])

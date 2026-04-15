@@ -11,25 +11,25 @@
   (:import (java.net InetSocketAddress)
            (java.nio ByteBuffer)
            (java.util.concurrent.atomic AtomicBoolean)
-           (org.eclipse.jetty.http2.client HTTP2Client)
-           (org.eclipse.jetty.http2.api Stream$Listener
-                                        Stream
-                                        Session
-                                        Session$Listener
-                                        Session$Listener$Adapter)
-           (org.eclipse.jetty.http2.frames HeadersFrame
-                                           DataFrame)
-           (org.eclipse.jetty.util Promise Callback)
-           (org.eclipse.jetty.util.component LifeCycle
-                                             LifeCycle$Listener)
-           (org.eclipse.jetty.http HttpFields
-                                   HttpField
-                                   HttpURI
-                                   HttpVersion
-                                   MetaData$Request
-                                   MetaData$Response
-                                   MetaData)
-           (org.eclipse.jetty.util.ssl SslContextFactory SslContextFactory$Client))
+           (io.github.protojure.shaded.jetty.http2.client HTTP2Client)
+           (io.github.protojure.shaded.jetty.http2.api Stream$Listener
+                                                       Stream
+                                                       Session
+                                                       Session$Listener
+                                                       Session$Listener$Adapter)
+           (io.github.protojure.shaded.jetty.http2.frames HeadersFrame
+                                                          DataFrame)
+           (io.github.protojure.shaded.jetty.util Promise Callback)
+           (io.github.protojure.shaded.jetty.util.component LifeCycle
+                                                            LifeCycle$Listener)
+           (io.github.protojure.shaded.jetty.http HttpFields
+                                                  HttpField
+                                                  HttpURI
+                                                  HttpVersion
+                                                  MetaData$Request
+                                                  MetaData$Response
+                                                  MetaData)
+           (io.github.protojure.shaded.jetty.util.ssl SslContextFactory SslContextFactory$Client))
   (:refer-clojure :exclude [resolve]))
 
 (set! *warn-on-reflection* true)
