@@ -5,7 +5,7 @@
 
 (ns protojure.test.utils
   (:require [clojure.data :as data]
-            [io.pedestal.http :as pedestal]))
+            [io.pedestal.connector :as conn]))
 
 (defn get-free-port []
   (let [socket (java.net.ServerSocket. 0)]
@@ -18,7 +18,5 @@
   (let [[a-diff b-diff _] (data/diff a b)]
     (and (nil? a-diff) (nil? b-diff))))
 
-(defn start-pedestal-server [desc]
-  (let [server (pedestal/create-server desc)]
-    (pedestal/start server)
-    server))
+(defn start-pedestal-server [connector]
+  (conn/start! connector))

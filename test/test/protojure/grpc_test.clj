@@ -9,7 +9,8 @@
             [clojure.core.async :refer [<!! >!! <! >! go go-loop] :as async]
             [bond.james :as bond]
             [promesa.core :as p]
-            [io.pedestal.http :as pedestal]
+            [io.pedestal.connector :as conn]
+            [io.pedestal.service.interceptors :as svc.interceptors]
             [io.pedestal.http.body-params :as body-params]
             [io.pedestal.interceptor :refer [interceptor]]
             [io.pedestal.interceptor.chain :refer [terminate]]
@@ -436,19 +437,16 @@
 (defn create-service []
   (let [port (test.utils/get-free-port)
         interceptors [(body-params/body-params)
-                      pedestal/html-body
+                      svc.interceptors/html-body
                       (authz/interceptor [greeter/rpc-metadata] pre-authorize?) ;; install the interceptor twice to test both vector and non-vector metadata
                       (authz/interceptor test.server/rpc-metadata pre-authorize?)]
-        server-params {:env                      :prod
-                       ::pedestal/routes         (into #{} (routes interceptors))
-                       ::pedestal/port           port
-
-                       ::pedestal/type           protojure.pedestal/config
-                       ::pedestal/chain-provider protojure.pedestal/provider}
+        connector-map (-> (conn/default-connector-map port)
+                          (conn/with-interceptors [svc.interceptors/not-found])
+                          (conn/with-routes (into #{} (routes interceptors))))
         client-params {:port port :idle-timeout -1}]
 
     (init-logging)
-    (let [server (test.utils/start-pedestal-server server-params)
+    (let [server (test.utils/start-pedestal-server (protojure.pedestal/create-connector connector-map))
           client @(jetty-client/connect client-params)
           grpc-client (grpc-connect port)]
       (swap! test-env assoc :port port :server server :client client :grpc-client grpc-client))))
@@ -456,7 +454,7 @@
 (defn destroy-service []
   (swap! test-env update :grpc-client #(deref (grpc/disconnect %)))
   (swap! test-env update :client #(deref (jetty-client/disconnect %)))
-  (swap! test-env update :server pedestal/stop))
+  (swap! test-env update :server conn/stop!))
 
 (defn wrap-service [test-fn]
   (create-service)
@@ -705,7 +703,7 @@
           r (test.client/ServerCloseDetect client {} output)]
       (async/thread
         (Thread/sleep 1000)
-        (swap! test-env update :server pedestal/stop))
+        (swap! test-env update :server conn/stop!))
       (is (thrown? java.util.concurrent.ExecutionException @r)))))
 
 (deftest client-idle-timeout

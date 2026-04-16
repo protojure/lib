@@ -5,9 +5,10 @@
 
 (ns protojure.pedestal.core
   "A [Pedestal](http://pedestal.io/) [chain provider](http://pedestal.io/reference/chain-providers) compatible with simultaneously serving both [GRPC-HTTP2](https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md) and [GRPC-WEB](https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-WEB.md) protocols"
-  (:require [io.pedestal.http :as http]
+  (:require [io.pedestal.interceptor :as pedestal.interceptor]
             [io.pedestal.interceptor.chain :as pedestal.chain]
-            [io.pedestal.interceptor.helpers :as pedestal.interceptors]
+            [io.pedestal.service.protocols :as pedestal.protocols]
+            [io.pedestal.connector.test :as conn.test]
             [io.pedestal.log :as log]
             [clojure.string :as string]
             [clojure.core.async :refer [<!! <! go chan >!! close! poll! promise-chan]]
@@ -307,7 +308,11 @@
 (defn chain-execute [request interceptors]
   (p/create
    (fn [resolve reject]
-     (let [response-handler (pedestal.interceptors/on-response ::container resolve)]
+     (let [response-handler (pedestal.interceptor/interceptor
+                             {:name ::container
+                              :leave (fn [context]
+                                       (resolve (:response context))
+                                       context)})]
        (pedestal.chain/execute {:request request} (cons response-handler interceptors))))))
 
 (defn- make-request-map [input-ch connections ^HttpServerExchange exchange]
@@ -391,44 +396,46 @@
         (unsubscribe-close connections exchange)
         (.endExchange exchange)))))
 
-(defn provider
-  "Generates our undertow provider, which defines the callback point between
-  the undertow container and pedestal by dealing with the dispatch interop.
-  Our real work occurs in the (request) form above"
-  [{:keys [::thread-pool] :or {thread-pool (threads/get-executor)} :as service-map}]
-  (let [interceptors (::http/interceptors service-map)
-        connections (atom {})]
-    (assoc service-map ::handler
-           (reify HttpHandler
-             (handleRequest [this exchange]
-               (handle-request thread-pool interceptors connections exchange))))))
+(defrecord UndertowConnector [connector-map server-atom]
+  pedestal.protocols/PedestalConnector
+  (start-connector! [this]
+    (.start (:server @server-atom))
+    this)
+  (stop-connector! [this]
+    (.stop (:server @server-atom))
+    this)
+  (test-request [this ring-request]
+    (conn.test/execute-interceptor-chain
+     (:initial-context connector-map {})
+     (:interceptors connector-map)
+     ring-request)))
 
-(defn config
-  "Given a service map (with interceptor provider established) and a server-opts map,
-   Return a map of :server, :start-fn, and :stop-fn.
-   Both functions are 0-arity"
-  [service-map
-   {:keys [host port]
-    {:keys [ssl-port] :as ssl-config} :container-options
-    :or   {host  "127.0.0.1"}}]
-  (let [handler (::handler service-map)
-        server (-> (Undertow/builder)
-                   (cond->
-                     ;; start http listener when no ssl-context is set
-                     ;; or if ssl-port is set in addition to port
-                    (or (nil? ssl-config)
-                        (and port ssl-port))
-                     (.addHttpListener port host)
-                     ;; listens on port unless ssl-port is set
-                     (some? ssl-config)
-                     (.addHttpsListener (or ssl-port port) host (ssl/keystore-> ssl-config)))
-                   (.setServerOption UndertowOptions/ENABLE_HTTP2 true)
-                   (.setHandler handler)
-                   (.build))]
-    {:server   server
-     :start-fn (fn []
-                 (.start server)
-                 server)
-     :stop-fn  (fn []
-                 (.stop server)
-                 server)}))
+(defn create-connector
+  "Creates a PedestalConnector backed by Undertow HTTP/2.
+
+   Build connector-map with io.pedestal.connector:
+     (-> (conn/default-connector-map host port)
+         (conn/with-interceptors interceptors)
+         (conn/with-routes routes))
+
+   Additional keys:
+   - ::thread-pool      : optional custom thread pool
+   - :container-options : SSL config {:ssl-port, :keystore, :key-password}"
+  [{:keys [host port] :or {host "127.0.0.1"} :as connector-map}]
+  (let [thread-pool  (::thread-pool connector-map (threads/get-executor))
+        interceptors (:interceptors connector-map)
+        connections  (atom {})
+        handler      (reify HttpHandler
+                       (handleRequest [_ exchange]
+                         (handle-request thread-pool interceptors connections exchange)))
+        {:keys [ssl-port] :as ssl-config} (:container-options connector-map)
+        undertow     (-> (Undertow/builder)
+                         (cond->
+                          (or (nil? ssl-config) (and port ssl-port))
+                           (.addHttpListener port host)
+                           (some? ssl-config)
+                           (.addHttpsListener (or ssl-port port) host (ssl/keystore-> ssl-config)))
+                         (.setServerOption UndertowOptions/ENABLE_HTTP2 true)
+                         (.setHandler handler)
+                         (.build))]
+    (->UndertowConnector connector-map (atom {:server undertow}))))
