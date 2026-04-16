@@ -4,6 +4,7 @@
 [![Clojars Project](https://img.shields.io/clojars/v/io.github.protojure/core.svg)](https://clojars.org/io.github.protojure/core)
 [![Clojars Project](https://img.shields.io/clojars/v/io.github.protojure/grpc-client.svg)](https://clojars.org/io.github.protojure/grpc-client)
 [![Clojars Project](https://img.shields.io/clojars/v/io.github.protojure/grpc-server.svg)](https://clojars.org/io.github.protojure/grpc-server)
+[![Clojars Project](https://img.shields.io/clojars/v/io.github.protojure/jetty-shaded.svg)](https://clojars.org/io.github.protojure/jetty-shaded)
 
 Native Clojure support for [Google Protocol Buffer](https://developers.google.com/protocol-buffers/) and [GRPC](https://grpc.io/).
 

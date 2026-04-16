@@ -40,7 +40,10 @@ deploy: jetty-shaded-deploy
 	$(LEIN) sub deploy clojars
 
 jetty-shaded-deploy:
-	cd modules/jetty-shaded && mvn -q -DskipTests deploy
+	@tmp=$$(mktemp /tmp/mvn-settings-XXXXXX.xml); \
+	printf '%s\n' '<settings><servers><server><id>clojars</id><username>$${env.CLOJARS_USERNAME}</username><password>$${env.CLOJARS_PASSWORD}</password></server></servers></settings>' > "$$tmp"; \
+	cd modules/jetty-shaded && mvn -q -DskipTests --settings "$$tmp" deploy; \
+	status=$$?; rm -f "$$tmp"; exit $$status
 
 clean:
 	$(LEIN) sub clean

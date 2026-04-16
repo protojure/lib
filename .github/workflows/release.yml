@@ -20,9 +20,6 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          server-id: clojars
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_PASSWORD
       - uses: DeLaGuardo/setup-clojure@13.4
         with:
           lein: latest
@@ -48,7 +45,5 @@ jobs:
       - name: Build and deploy all artifacts
         run: make deploy
         env:
-          MAVEN_USERNAME: ${{ secrets.CLOJARS_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
           CLOJARS_USERNAME: ${{ secrets.CLOJARS_USERNAME }}
           CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
