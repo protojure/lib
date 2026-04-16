@@ -29,7 +29,7 @@
                          [io.github.protojure/grpc-client ~protojure-version]
                          [io.github.protojure/grpc-server ~protojure-version]
                          [protojure/google.protobuf "1.0.0"]]
-  :javac-options ["-target" "11" "-source" "11"]
+  :javac-options ["--release" "17"]
   :deploy-repositories [["clojars" {:url "https://clojars.org/repo"
                                     :username :env/clojars_username
                                     :password :env/clojars_password
