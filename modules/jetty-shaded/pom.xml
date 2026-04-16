@@ -47,8 +47,8 @@
   <dependencies>
     <dependency>
       <groupId>org.eclipse.jetty.http2</groupId>
-      <artifactId>http2-client</artifactId>
-      <version>11.0.26</version>
+      <artifactId>jetty-http2-client</artifactId>
+      <version>12.1.8</version>
     </dependency>
     <dependency>
       <groupId>org.eclipse.jetty</groupId>

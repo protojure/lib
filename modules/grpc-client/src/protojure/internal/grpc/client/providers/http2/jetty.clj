@@ -14,9 +14,9 @@
            (io.github.protojure.shaded.jetty.http2.client HTTP2Client)
            (io.github.protojure.shaded.jetty.http2.api Stream$Listener
                                                        Stream
+                                                       Stream$Data
                                                        Session
-                                                       Session$Listener
-                                                       Session$Listener$Adapter)
+                                                       Session$Listener)
            (io.github.protojure.shaded.jetty.http2.frames HeadersFrame
                                                           DataFrame)
            (io.github.protojure.shaded.jetty.util Promise Callback)
@@ -99,7 +99,7 @@
     (reify Stream$Listener
       (onHeaders [_ stream frame]
         (let [^MetaData metadata (.getMetaData ^HeadersFrame frame)
-              fields (fields-> (.getFields metadata))
+              fields (fields-> (.getHttpFields metadata))
               data (if (.isResponse metadata)
                      (let [status (.getStatus ^MetaData$Response metadata)
                            reason (.getReason ^MetaData$Response metadata)]
@@ -110,36 +110,42 @@
               last? (.isEndStream ^HeadersFrame frame)]
           (stream-log :trace stream "Received HEADER-FRAME: " data " ENDFRAME=" last?)
           (>!! meta-ch data)
-          (when last?
-            (end-stream! stream))))
-      (onData [_ stream frame callback]
-        (let [data (.getData ^DataFrame frame)
-              len (.remaining data)
-              last? (.isEndStream ^DataFrame frame)]
-          (stream-log :trace stream "Received DATA-FRAME (" len " bytes) ENDFRAME=" last?)
-          (when (and (some? data-ch) (pos? len))
-            (let [clone (ByteBuffer/allocate len)]
-              (.put clone data)
-              (async/>!! data-ch (.flip clone))))
-          (when last?
-            (end-stream! stream))
-          (.succeeded callback)))
+          (if last?
+            (end-stream! stream)
+            (.demand stream))))
+      (onDataAvailable [_ stream]
+        (loop []
+          (when-let [^Stream$Data sd (.readData stream)]
+            (let [^DataFrame frame (.frame sd)
+                  data (.getByteBuffer frame)
+                  len (.remaining data)
+                  last? (.isEndStream frame)]
+              (stream-log :trace stream "Received DATA-FRAME (" len " bytes) ENDFRAME=" last?)
+              (when (and (some? data-ch) (pos? len))
+                (let [clone (ByteBuffer/allocate len)]
+                  (.put clone data)
+                  (async/>!! data-ch (.flip clone))))
+              (.release sd)
+              (if last?
+                (end-stream! stream)
+                (do (.demand stream) (recur)))))))
       (onFailure [_ stream error reason ex callback]
         (stream-log :error stream "FAILURE: code-> " error " message-> " (ex-message ex))
         (>!! meta-ch {:error {:type :failure :code error :reason reason :ex ex}})
         (end-stream! stream)
         (.succeeded callback))
-      (onReset [_ stream frame]
+      (onReset [_ stream frame callback]
         (stream-log :error stream "Received RST-FRAME")
         (let [error (.getError frame)]
           (>!! meta-ch {:error {:type :reset :code error}})
-          (end-stream! stream)))
-      (onIdleTimeout [_ stream ex]
+          (end-stream! stream)
+          (.succeeded callback)))
+      (onIdleTimeout [_ stream ex promise]
         (stream-log :error stream "Timeout")
         (>!! meta-ch {:error {:type :timeout :error ex}})
         (end-stream! stream)
         ;; true: Close the session
-        true)
+        (.succeeded promise true))
       (onClosed [_ stream]
         (stream-log :trace stream "Closed"))
       (onPush [_ stream frame]
@@ -182,24 +188,29 @@
     (p/resolved true)))
 
 (defn- session-listener
-  "Create a listener for Session events"
+  "Create a listener for Session events.
+  Proxy is used rather than reify to avoid cloverage instrumentation issues with
+  interface default methods; all methods must be implemented explicitly."
   [on-close]
-  (if (some? on-close)
-    (let [go-away-once (AtomicBoolean. false)]
-      (proxy [Session$Listener$Adapter] []
-        ;; We must re-implement a bit of logic from the base class here to invoke callback.
-        ;; See https://github.com/jetty/jetty.project/blob/5bc5e562c8d05c5862505aebe5cf83a61bdbcb96/jetty-http2/http2-common/src/main/java/org/eclipse/jetty/http2/api/Session.java#L256
-        (onClose [_session _frame ^Callback callback]
-          (try
-            (when (.compareAndSet go-away-once false true)
-              ;; An HTTP/2 session may send multiple GOAWAY frames on disconnect.
-              ;; Trigger on-close once, upon the first frame.
-              ;; https://datatracker.ietf.org/doc/html/rfc7540#section-6.8
-              (on-close))
-            (.succeeded callback)
-            (catch Throwable e
-              (.failed callback e))))))
-    (Session$Listener$Adapter.)))
+  (let [go-away-once (AtomicBoolean. false)]
+    (proxy [Session$Listener] []
+      (onPreface [_] nil)
+      (onNewStream [_ _] nil)
+      (onSettings [_ _])
+      (onPing [_ _])
+      (onReset [_ _])
+      (onGoAway [_ _])
+      ;; Multiple GOAWAY frames are possible (RFC 7540 §6.8). Trigger on-close once.
+      ;; https://datatracker.ietf.org/doc/html/rfc7540#section-6.8
+      (onClose [_ _ ^Callback callback]
+        (try
+          (when (and on-close (.compareAndSet go-away-once false true))
+            (on-close))
+          (.succeeded callback)
+          (catch Throwable e
+            (.failed callback e))))
+      (onIdleTimeout [_] true)
+      (onFailure [_ _ ^Callback callback] (.succeeded callback)))))
 
 ;;------------------------------------------------------------------------------------
 ;; Exposed API

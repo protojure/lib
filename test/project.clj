@@ -48,4 +48,4 @@
   :cloverage {:runner :eftest
               :runner-opts {:multithread? false
                             :fail-fast? true}
-              :fail-threshold 81})
+              :fail-threshold 83})
