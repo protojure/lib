@@ -40,7 +40,8 @@
                                     [eftest "0.6.0"]
                                     [criterium "0.4.6"]
                                     [circleci/bond "0.6.0"]
-                                    [crypto-random "1.2.1"]]
+                                    [crypto-random "1.2.1"]
+                                    [cheshire "5.13.0"]]
                    :resource-paths ["test/resources"]}}
   :source-paths ["../modules/io/src" "../modules/core/src" "../modules/grpc-client/src" "../modules/grpc-server/src"]
   :java-source-paths ["../modules/io/src"]

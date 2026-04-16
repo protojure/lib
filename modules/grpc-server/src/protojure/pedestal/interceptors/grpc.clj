@@ -160,12 +160,13 @@
           :trailers (->trailers {:grpc-status status :grpc-message msg})))
 
 (def error-interceptor
-  (err/error-dispatch
-   [ctx ex]
+  (assoc (err/error-dispatch
+          [ctx ex]
 
-   [{:exception-type ::status/error}]
-   (let [{:keys [code msg]} (ex-data ex)]
-     (err-status ctx code msg))
+          [{:exception-type ::status/error}]
+          (let [{:keys [code msg]} (ex-data ex)]
+            (err-status ctx code msg))
 
-   :else
-   (err-status ctx (grpc.status/get-code :internal) (ex-message ex))))
+          :else
+          (err-status ctx (grpc.status/get-code :internal) (ex-message ex)))
+         :name ::error-interceptor))

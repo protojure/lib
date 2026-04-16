@@ -5,10 +5,10 @@
 
 (ns protojure.grpc-web-test
   (:require [clojure.test :refer :all]
-            [io.pedestal.test :refer [response-for]]
+            [io.pedestal.connector :as conn]
+            [io.pedestal.connector.test :as conn.test]
             [protojure.pedestal.core :as protojure.pedestal]
             [protojure.pedestal.interceptors.grpc-web :as grpc-web]
-            [io.pedestal.http :as pedestal]
             [io.pedestal.http.body-params :as body-params]
             [example.types :as example]
             [protojure.protobuf :as pb]
@@ -24,11 +24,10 @@
 
 (def routes [["/" :get (conj interceptors `grpc-echo)]])
 
-(def service (let [service-params {:env                      :prod
-                                   ::pedestal/routes         (into #{} routes)
-                                   ::pedestal/type           protojure.pedestal/config
-                                   ::pedestal/chain-provider protojure.pedestal/provider}]
-               (:io.pedestal.http/service-fn (io.pedestal.http/create-servlet service-params))))
+(def connector
+  (protojure.pedestal/create-connector
+   (conn/with-routes (conn/default-connector-map 0)
+     (into #{} routes))))
 
 (deftest grpc-web-text-check
   (testing "Check that a round-trip GRPC request works"
@@ -36,10 +35,10 @@
       (is
        (=
         (with-out-str (pr (example/pb->Money input-msg)))
-        (:body (response-for
-                service
+        (:body (conn.test/response-for
+                connector
                 :get "/"
-                :headers {"Content-Type" "application/grpc-web-text"}
+                :headers {"content-type" "application/grpc-web-text"}
                 :body (clojure.java.io/input-stream (b64/encode input-msg)))))))))
 
 (deftest grpc-web-check
@@ -48,10 +47,10 @@
       (is
        (=
         (with-out-str (pr (example/pb->Money input-msg)))
-        (:body (response-for
-                service
+        (:body (conn.test/response-for
+                connector
                 :get "/"
-                :headers {"Content-Type" "application/grpc-web"}
+                :headers {"content-type" "application/grpc-web"}
                 :body (clojure.java.io/input-stream input-msg))))))))
 
 (deftest grpc-web-proto-check
@@ -60,10 +59,10 @@
       (is
        (=
         (with-out-str (pr (example/pb->Money input-msg)))
-        (:body (response-for
-                service
+        (:body (conn.test/response-for
+                connector
                 :get "/"
-                :headers {"Content-Type" "application/grpc-web+proto"}
+                :headers {"content-type" "application/grpc-web+proto"}
                 :body (clojure.java.io/input-stream input-msg))))))))
 
 (deftest grpc-web-text-proto-check
@@ -72,10 +71,10 @@
       (is
        (=
         (with-out-str (pr (example/pb->Money input-msg)))
-        (:body (response-for
-                service
+        (:body (conn.test/response-for
+                connector
                 :get "/"
-                :headers {"Content-Type" "application/grpc-web-text+proto"}
+                :headers {"content-type" "application/grpc-web-text+proto"}
                 :body (clojure.java.io/input-stream (b64/encode input-msg)))))))))
 
 (deftest grpc-web-no-header-match-check
@@ -84,8 +83,8 @@
       (is
        (=
         (with-out-str (pr (example/pb->Money input-msg)))
-        (:body (response-for
-                service
+        (:body (conn.test/response-for
+                connector
                 :get "/"
-                :headers {"Content-Type" "application/grpc"}
+                :headers {"content-type" "application/grpc"}
                 :body (clojure.java.io/input-stream input-msg))))))))

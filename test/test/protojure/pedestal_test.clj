@@ -6,7 +6,9 @@
 (ns protojure.pedestal-test
   (:require [clojure.test :refer :all]
             [clojure.core.async :as async :refer [go >! <!! >!!]]
-            [io.pedestal.http :as http]
+            [io.pedestal.connector :as conn]
+            [io.pedestal.http.route :as route]
+            [io.pedestal.service.interceptors :as svc.interceptors]
             [io.pedestal.http.body-params :as body-params]
             [promesa.exec :as p.exec]
             [protojure.pedestal.core :as core]
@@ -126,33 +128,28 @@
   (let [port (test.utils/get-free-port)
         ssl-port (test.utils/get-free-port)
         interceptors [(body-params/body-params)
-                      http/html-body
-                      io.pedestal.http/json-body
+                      svc.interceptors/html-body
+                      svc.interceptors/json-body
                       (authz/interceptor nil sync-authorize?)
                       (authz/interceptor nil async-authorize?)]
         thread-pool   (p.exec/fixed-executor {:parallelism 64})
-        desc {:env                     :prod
-              ::http/routes            (into #{} (routes interceptors))
-              ::http/port              port
+        connector-map (-> (conn/default-connector-map port)
+                          (assoc ::core/thread-pool thread-pool)
+                          (assoc :container-options {:ssl-port ssl-port
+                                                     ; keystore may be either string denoting file path (relative or
+                                                     ; absolute) or actual KeyStore instance
+                                                     :keystore (io/resource "https/keystore.jks")
+                                                     :key-password "password"})
+                          (conn/with-interceptors [svc.interceptors/not-found route/query-params])
+                          (conn/with-routes (into #{} (routes interceptors))))]
 
-              ::http/type              core/config
-              ::http/chain-provider    core/provider
-              ::core/thread-pool       thread-pool
-
-              ::http/container-options {:ssl-port ssl-port
-                                        ; keystore may be either string denoting file path (relative or
-                                        ; absolute) or actual KeyStore instance
-                                        :keystore (io/resource "https/keystore.jks")
-                                        :key-password "password"}}]
-
-    (let [server (http/create-server desc)]
-      (http/start server)
+    (let [server (conn/start! (core/create-connector connector-map))]
       (swap! test-svc assoc :port port :ssl-port ssl-port :server server :thread-pool thread-pool))))
 
 (defn destroy-service []
   (swap! test-svc (fn [x]
                     (-> x
-                        (update :server http/stop)
+                        (update :server conn/stop!)
                         (update :thread-pool #(.shutdown %))))))
 
 (defn wrap-service [test-fn]
